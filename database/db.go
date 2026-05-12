@@ -7,7 +7,6 @@ import (
 	"photo-print-backend/models"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -41,8 +40,8 @@ func InitDB() {
 	var count int64
 	DB.Model(&models.User{}).Count(&count)
 	if count == 0 {
-		hashed, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-		admin := models.User{Username: "admin", Password: string(hashed)}
+		// hashed, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+		admin := models.User{Username: "admin", Password: "admin123"}
 		DB.Create(&admin)
 		log.Println("默认管理员已创建: admin / admin123")
 	}

@@ -1,10 +1,6 @@
-# Photo Print Backend
-
-这是一个使用 Go 语言开发的后端服务，用于处理照片打印相关的订单和文件上传。该项目集成了 Swaggo 以生成 API 文档，并通过 Docker 进行容器化部署。
-
 # 📸 照片打印商城后端
 
-> 网店下单打印照片系统 – 支持小程序上传照片、后台订单管理、**管理员登录认证**、一键 Docker 部署。
+> 网店下单打印照片系统 – 支持小程序上传照片、后台订单管理、管理员登录认证、一键 Docker 部署，并提供热重载开发环境。
 
 ![Go Version](https://img.shields.io/badge/Go-1.26.3-blue)
 ![Gin](https://img.shields.io/badge/Gin-1.10.0-lightblue)
@@ -23,7 +19,8 @@
 - 🔐 **登录认证** – 基于 JWT 的管理员登录，保护后台 API
 - 🖥️ **后台面板** – 带登录界面的 HTML 管理页，未登录自动跳转
 - 📄 **Swagger 文档** – 自动生成 API 文档，在线调试
-- 🐳 **Docker 一键运行** – 包含 MySQL + 后端，开箱即用
+- 🐳 **Docker 一键运行** – 生产环境与开发环境分离，开箱即用
+- ♻️ **热重载开发** – 代码修改自动重启，提升开发效率
 
 ---
 
@@ -38,7 +35,7 @@
 | 认证           | JWT (golang-jwt/jwt) + bcrypt                                |
 | API 文档       | [Swaggo](https://github.com/swaggo/swag) + Swagger UI        |
 | 容器化         | Docker + Docker Compose                                      |
-| 跨域处理       | 自定义中间件                                                  |
+| 热重载开发     | [Air](https://github.com/cosmtrek/air)                       |
 | 文件存储       | 本地磁盘 (`./uploads`)                                       |
 
 ---
@@ -49,44 +46,30 @@
 photo-print-backend/
 ├── main.go                 # 入口、路由、Swagger 注解
 ├── go.mod / go.sum         # 依赖管理
-├── Dockerfile              # 多阶段构建镜像
-├── docker-compose.yml      # 一键启动 MySQL + 后端
+├── Dockerfile              # 生产环境镜像
+├── Dockerfile.dev          # 开发环境镜像（集成 Air）
+├── docker-compose.yml      # 生产环境编排
+├── docker-compose.dev.yml  # 开发环境编排（热重载）
+├── .air.toml               # Air 配置文件（可选）
 ├── .env.example            # 环境变量模板
 ├── config/                 # 配置加载
-│   └── config.go
-├── database/               # 数据库连接 & 迁移 & 默认管理员初始化
-│   └── db.go
-├── models/                 # 数据模型 (Photo, Order, OrderItem, User)
-│   └── models.go
-├── controllers/            # 业务控制器 (新增 auth 控制器)
-│   ├── upload.go
-│   ├── order.go
-│   ├── photo.go
-│   └── auth.go
-├── middleware/             # 中间件 (CORS, JWT 认证)
-│   ├── cors.go
-│   └── auth.go
-├── utils/                  # 辅助函数 (响应, 文件保存, JWT)
-│   ├── response.go
-│   ├── file.go
-│   └── jwt.go
-├── uploads/                # 上传的照片存储目录 (挂载卷)
-├── static/                 # 静态后台管理页面
-│   └── admin.html          # 带登录界面的管理面板
-└── docs/                   # swag init 生成的文档
-    ├── docs.go
-    ├── swagger.json
-    └── swagger.yaml
+├── database/               # 数据库连接 & 迁移
+├── models/                 # 数据模型
+├── controllers/            # 业务控制器
+├── middleware/             # 中间件 (CORS, JWT)
+├── utils/                  # 辅助函数 (响应, 文件, JWT)
+├── uploads/                # 上传的照片存储目录
+├── static/                 # 后台管理页面
+└── docs/                   # Swagger 文档
 ```
 
 ---
 
-## 🚀 快速开始
+## 🚀 快速开始（生产模式）
 
 ### 前置条件
 
 - Docker & Docker Compose
-- (可选) Go 1.26.3 本地开发环境、Make
 
 ### 1️⃣ 克隆项目
 
@@ -95,7 +78,7 @@ git clone https://github.com/your-username/photo-print-backend.git
 cd photo-print-backend
 ```
 
-### 2️⃣ 使用 Docker Compose 启动（推荐）
+### 2️⃣ 启动服务
 
 ```bash
 docker-compose up -d --build
@@ -103,73 +86,134 @@ docker-compose up -d --build
 
 该命令会：
 - 启动 MySQL 8.0 容器（数据持久化）
-- 构建 Go 后端镜像（自动安装依赖、生成 Swagger 文档）
-- 挂载 `./uploads` 到宿主机保存照片
-- 后端服务暴露在 `8080` 端口
+- 构建 Go 后端生产镜像（最终只包含二进制文件）
+- 挂载 `./uploads` 目录保存照片
+- 后端服务暴露 `8080` 端口
 
-### 3️⃣ 初始化管理员账户
+### 3️⃣ 初始化管理员
 
-首次启动时，数据库会自动初始化并创建默认管理员：
+首次启动自动创建默认管理员账户：
 
 - **用户名**: `admin`
 - **密码**: `admin123`
 
-> ⚠️ 生产环境请务必修改默认密码！可通过直接修改数据库或调用 API 重置。
+> ⚠️ 生产环境请务必修改默认密码！
 
-### 4️⃣ 验证服务
+### 4️⃣ 访问服务
 
-```bash
-# 查看容器状态
-docker-compose ps
+- 后台管理：`http://localhost:8080/admin`
+- Swagger 文档：`http://localhost:8080/swagger/index.html`
+- 健康检查：`http://localhost:8080/api/v1/photos`
 
-# 测试公开接口
-curl http://localhost:8080/api/v1/photos
-
-# 访问后台管理页面（自动跳转登录）
-open http://localhost:8080/admin
-
-# 访问 Swagger 文档
-open http://localhost:8080/swagger/index.html
-```
-
-### 5️⃣ 登录后台
-
-1. 访问 `http://localhost:8080/admin`
-2. 输入用户名 `admin`，密码 `admin123`
-3. 登录后即可管理订单和查看所有照片
-
-### 6️⃣ 停止服务
+### 5️⃣ 停止服务
 
 ```bash
 docker-compose down
-# 如需清理数据卷（删除所有数据）
+# 同时删除数据卷
 docker-compose down -v
 ```
 
 ---
 
-## 🧪 本地开发（不使用 Docker）
+## 🧪 开发模式（热重载 + 实时日志）
 
-参见 [本地开发指南](LOCAL_DEV.md) 或直接执行：
+为了方便本地开发，我们提供了独立的开发环境配置文件，支持**代码修改自动重启**，无需手动重新构建镜像。
+
+### 使用步骤
+
+1. **安装 Docker Desktop**（确保 docker-compose 插件可用）
+
+2. **启动开发环境**
 
 ```bash
-# 安装 swag
-go install github.com/swaggo/swag/cmd/swag@latest
+docker-compose -f docker-compose.dev.yml up -d --build
+```
 
-# 下载依赖
-go mod tidy
+3. **查看实时日志**
 
-# 生成 Swagger 文档
-swag init
+```bash
+docker-compose -f docker-compose.dev.yml logs -f backend
+```
 
-# 运行 MySQL（需提前安装或使用 Docker 独立运行）
-docker run -d --name mysql-local -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=photoprint -p 3306:3306 mysql:8.0
+4. **修改代码**  
+   编辑任意 `.go` 文件，保存后 Air 会自动检测变化 → 重新编译 → 重启服务。  
+   无需重新构建镜像或重启容器。
 
-# 设置环境变量
-export DB_HOST=localhost DB_USER=root DB_PASSWORD=123456 DB_NAME=photoprint SERVER_PORT=8080
+5. **访问服务**  
+   同生产模式：`http://localhost:8080/admin`
 
-# 运行
-go run main.go
+6. **停止开发环境**
+
+```bash
+docker-compose -f docker-compose.dev.yml down -v
+```
+
+7. 🗄️ 数据库访问
+
+你可以通过以下方式进入 MySQL 容器并查看数据表。
+
+### 方式一：通过 Docker 容器进入（推荐）
+
+如果你使用 `docker-compose` 启动的服务，数据库容器名称通常是 `photo-db`（生产环境）或 `photo-db-dev`（开发环境）。
+
+#### 1. 查看容器名称
+```bash
+docker compose ps
+# 或开发环境
+docker-compose -f docker-compose.dev.yml ps
+```
+
+#### 2. 进入容器内的 MySQL 客户端
+```bash
+# 生产环境（默认密码 123456）
+docker exec -it photo-db mysql -uroot -p123456
+
+# 开发环境（容器名可能为 photo-db-dev）
+docker exec -it photo-db-dev mysql -uroot -p123456
+```
+> 请根据 `docker-compose.yml` 中 `MYSQL_ROOT_PASSWORD` 的实际设置修改密码。
+
+#### 3. 切换数据库并查看表
+```sql
+USE photoprint;
+SHOW TABLES;
+```
+输出示例：
+```
++---------------------+
+| Tables_in_photoprint|
++---------------------+
+| order_items         |
+| orders              |
+| photos              |
+| users               |
++---------------------+
+```
+
+
+### 开发环境工作原理
+
+- `docker-compose.dev.yml` 挂载了当前项目目录到容器内的 `/app`
+- 容器内运行 [Air](https://github.com/cosmtrek/air) 进程，监听文件变化
+- 任何 `.go` 文件改动都会触发 `go build` 并重启进程
+- 数据库使用独立的 Docker 卷，数据不会丢失
+
+### 自定义 Air 配置（可选）
+
+在项目根目录创建 `.air.toml` 文件可覆盖默认行为。示例：
+
+```toml
+# .air.toml
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/main ."
+  bin = "./tmp/main"
+  include_ext = ["go", "tpl", "html"]
+  exclude_dir = ["assets", "tmp", "vendor", "docs"]
+  delay = 1000
+  stop_on_error = true
 ```
 
 ---
@@ -195,7 +239,7 @@ go run main.go
 
 > 访问受保护接口时，必须在请求头中添加 `Authorization: Bearer <token>`。登录接口会返回 token。
 
-### 页面
+### 页面访问
 
 | 路径       | 说明                     |
 | ---------- | ------------------------ |
@@ -207,9 +251,9 @@ go run main.go
 
 ---
 
-## 🐳 Docker 自定义配置
+## 🐳 环境变量配置
 
-通过环境变量覆盖默认配置（修改 `docker-compose.yml` 或直接在 `environment` 中定义）：
+### 生产环境 (`docker-compose.yml`)
 
 | 变量名           | 默认值               | 说明                       |
 | ---------------- | -------------------- | -------------------------- |
@@ -221,13 +265,15 @@ go run main.go
 | `SERVER_PORT`    | `8080`               | 后端监听端口               |
 | `JWT_SECRET`     | `your-secret-key`    | JWT 签名密钥（生产必须修改）|
 
-在 `docker-compose.yml` 中增加 `JWT_SECRET` 环境变量可覆盖默认密钥。
+### 开发环境 (`docker-compose.dev.yml`)
+
+开发环境同样支持以上变量，且额外挂载了源码目录。你可以在 `docker-compose.dev.yml` 中修改环境变量或添加新的配置。
 
 ---
 
 ## 🔒 安全注意事项
 
-- **生产环境务必修改 `JWT_SECRET`**：在 `utils/jwt.go` 中或通过环境变量设置一个强随机字符串。
+- **生产环境务必修改 `JWT_SECRET`**：在 `utils/jwt.go` 或通过环境变量设置一个强随机字符串。
 - **修改默认管理员密码**：首次登录后请立即更改密码（可通过数据库直接更新或添加修改密码 API）。
 - **启用 HTTPS**：在生产环境使用 Nginx 反向代理并配置 SSL 证书。
 - **数据库连接**：不要将数据库暴露在公网，使用云数据库的内网地址连接。

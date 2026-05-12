@@ -7,6 +7,7 @@ definitions:
       price:
         type: number
       quantity:
+        minimum: 1
         type: integer
       spec:
         type: string
@@ -23,6 +24,7 @@ definitions:
       items:
         items:
           $ref: '#/definitions/controllers.CreateOrderItem'
+        minItems: 1
         type: array
       user_id:
         type: string
@@ -30,6 +32,16 @@ definitions:
     - address
     - items
     - user_id
+    type: object
+  controllers.LoginReq:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
     type: object
   models.Order:
     properties:
@@ -89,8 +101,7 @@ definitions:
     properties:
       code:
         type: integer
-      data:
-        type: object
+      data: {}
       message:
         type: string
     type: object
@@ -101,6 +112,35 @@ info:
   title: 照片打印商城 API
   version: "1.0"
 paths:
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户名密码
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  properties:
+                    token:
+                      type: string
+                  type: object
+              type: object
+      summary: 后台登录
+      tags:
+      - 认证
   /api/v1/orders:
     get:
       consumes:

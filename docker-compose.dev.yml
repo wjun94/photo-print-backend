@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: photo-db-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: photoprint
+    ports:
+      - "3306:3306"   # 将数据库端口映射到宿主机，方便本地工具连接
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: photo-backend-dev
+    restart: unless-stopped
+    ports:
+      - "8081:8080"     # HTTP 服务端口
+      - "2345:2345"     # Delve 调试端口（如果使用 dlv 而非 air）
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: 123456
+      DB_NAME: photoprint
+      SERVER_PORT: 8080
+      # 可选：设置代理加速
+      GOPROXY: https://goproxy.cn,direct
+    volumes:
+      # 挂载当前目录到容器内，实现代码热更新
+      - .:/app
+      # 避免挂载覆盖容器内的依赖目录（可选）
+      - /app/tmp
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_data_dev:

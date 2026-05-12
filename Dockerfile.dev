@@ -1,0 +1,17 @@
+FROM golang:1.26.3-alpine
+
+WORKDIR /app
+
+# 安装开发工具
+RUN go install github.com/air-verse/air@latest
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+
+# 复制依赖文件
+COPY go.mod go.sum ./
+RUN go mod download
+
+# 复制源码（通过挂载，实际在运行时覆盖）
+COPY . .
+
+# 生成 swagger 文档（每次启动前重新生成）
+CMD ["sh", "-c", "swag init && air"]
