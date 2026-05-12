@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>照片打印后台管理</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #eee; }
+        img { max-width: 80px; max-height: 80px; }
+        .tabs button { padding: 8px 16px; margin-right: 10px; cursor: pointer; }
+        .active { background: #007bff; color: white; border: none; }
+        .content { margin-top: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>照片打印后台管理系统</h1>
+    <div class="tabs">
+        <button id="tabOrders" class="active">订单列表</button>
+        <button id="tabPhotos">照片列表</button>
+    </div>
+    <div id="ordersPanel" class="content">
+        <h2>订单列表</h2>
+        <table id="ordersTable">
+            <thead><tr><th>ID</th><th>订单号</th><th>用户ID</th><th>总金额</th><th>状态</th><th>地址</th><th>创建时间</th><th>操作</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div id="photosPanel" class="content" style="display:none">
+        <h2>照片列表</h2>
+        <table id="photosTable">
+            <thead><tr><th>ID</th><th>用户ID</th><th>照片预览</th><th>上传时间</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+<script>
+    const API_BASE = '/api/v1';
+
+    async function fetchOrders() {
+        const res = await fetch(`${API_BASE}/orders`);
+        const json = await res.json();
+        if (json.code === 0) {
+            const tbody = document.querySelector('#ordersTable tbody');
+            tbody.innerHTML = '';
+            json.data.list.forEach(order => {
+                const row = tbody.insertRow();
+                row.insertCell(0).innerText = order.id;
+                row.insertCell(1).innerText = order.order_no;
+                row.insertCell(2).innerText = order.user_id;
+                row.insertCell(3).innerText = order.total_amount;
+                row.insertCell(4).innerText = order.status;
+                row.insertCell(5).innerText = order.address.substring(0, 30);
+                row.insertCell(6).innerText = new Date(order.created_at).toLocaleString();
+                const actionCell = row.insertCell(7);
+                const select = document.createElement('select');
+                select.innerHTML = `<option value="pending">待处理</option>
+                                    <option value="paid">已支付</option>
+                                    <option value="processing">处理中</option>
+                                    <option value="completed">已完成</option>
+                                    <option value="cancelled">已取消</option>`;
+                select.value = order.status;
+                select.onchange = async (e) => {
+                    await fetch(`${API_BASE}/orders/${order.id}/status`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({status: e.target.value})
+                    });
+                    fetchOrders();
+                };
+                actionCell.appendChild(select);
+            });
+        }
+    }
+
+    async function fetchPhotos() {
+        const res = await fetch(`${API_BASE}/photos`);
+        const json = await res.json();
+        if (json.code === 0) {
+            const tbody = document.querySelector('#photosTable tbody');
+            tbody.innerHTML = '';
+            json.data.list.forEach(photo => {
+                const row = tbody.insertRow();
+                row.insertCell(0).innerText = photo.id;
+                row.insertCell(1).innerText = photo.user_id;
+                const img = document.createElement('img');
+                img.src = photo.image_url;
+                row.insertCell(2).appendChild(img);
+                row.insertCell(3).innerText = new Date(photo.created_at).toLocaleString();
+            });
+        }
+    }
+
+    document.getElementById('tabOrders').onclick = () => {
+        document.getElementById('ordersPanel').style.display = 'block';
+        document.getElementById('photosPanel').style.display = 'none';
+        document.getElementById('tabOrders').classList.add('active');
+        document.getElementById('tabPhotos').classList.remove('active');
+        fetchOrders();
+    };
+    document.getElementById('tabPhotos').onclick = () => {
+        document.getElementById('ordersPanel').style.display = 'none';
+        document.getElementById('photosPanel').style.display = 'block';
+        document.getElementById('tabPhotos').classList.add('active');
+        document.getElementById('tabOrders').classList.remove('active');
+        fetchPhotos();
+    };
+    fetchOrders();
+</script>
+</body>
+</html>

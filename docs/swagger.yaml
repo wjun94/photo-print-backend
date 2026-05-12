@@ -1,0 +1,270 @@
+basePath: /api/v1
+definitions:
+  controllers.CreateOrderItem:
+    properties:
+      photo_id:
+        type: integer
+      price:
+        type: number
+      quantity:
+        type: integer
+      spec:
+        type: string
+    required:
+    - photo_id
+    - price
+    - quantity
+    - spec
+    type: object
+  controllers.CreateOrderReq:
+    properties:
+      address:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/controllers.CreateOrderItem'
+        type: array
+      user_id:
+        type: string
+    required:
+    - address
+    - items
+    - user_id
+    type: object
+  models.Order:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/models.OrderItem'
+        type: array
+      order_no:
+        type: string
+      status:
+        description: pending, paid, processing, completed, cancelled
+        type: string
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.OrderItem:
+    properties:
+      id:
+        type: integer
+      order_id:
+        type: integer
+      photo:
+        $ref: '#/definitions/models.Photo'
+      photo_id:
+        type: integer
+      price:
+        type: number
+      quantity:
+        type: integer
+      spec:
+        description: 如 "5寸", "6寸"
+        type: string
+    type: object
+  models.Photo:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      image_url:
+        type: string
+      user_id:
+        description: 小程序用户标识
+        type: string
+    type: object
+  utils.Response:
+    properties:
+      code:
+        type: integer
+      data:
+        type: object
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 网店下单打印照片系统
+  title: 照片打印商城 API
+  version: "1.0"
+paths:
+  /api/v1/orders:
+    get:
+      consumes:
+      - application/json
+      description: 后台查看订单，支持分页和状态筛选
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        type: integer
+      - description: 状态
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Order'
+                  type: array
+              type: object
+      summary: 订单列表
+      tags:
+      - 订单
+    post:
+      consumes:
+      - application/json
+      description: 用户下单打印照片
+      parameters:
+      - description: 订单信息
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateOrderReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+      summary: 创建订单
+      tags:
+      - 订单
+  /api/v1/orders/{id}:
+    get:
+      parameters:
+      - description: 订单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Order'
+              type: object
+      summary: 订单详情
+      tags:
+      - 订单
+  /api/v1/orders/{id}/status:
+    put:
+      parameters:
+      - description: 订单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 状态字段
+        in: body
+        name: status
+        required: true
+        schema:
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+      summary: 更新订单状态
+      tags:
+      - 订单
+  /api/v1/photos:
+    get:
+      description: 后台查看所有上传的照片
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Photo'
+                  type: array
+              type: object
+      summary: 照片列表
+      tags:
+      - 照片
+  /api/v1/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 小程序端上传打印照片
+      parameters:
+      - description: 用户ID
+        in: formData
+        name: user_id
+        required: true
+        type: string
+      - description: 照片文件 (jpg/png, max 5MB)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Photo'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+      summary: 上传照片
+      tags:
+      - 照片
+swagger: "2.0"
