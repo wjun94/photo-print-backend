@@ -13,14 +13,27 @@
         .tabs button { padding: 8px 16px; margin-right: 10px; cursor: pointer; }
         .active { background: #007bff; color: white; border: none; }
         .content { margin-top: 20px; }
+        .login-form { max-width: 300px; margin: 100px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .login-form input { width: 100%; padding: 8px; margin: 8px 0; box-sizing: border-box; }
+        .login-form button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .error { color: red; margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
-<div class="container">
+<div id="loginContainer" class="login-form">
+    <h2 style="text-align:center">后台登录</h2>
+    <input type="text" id="username" placeholder="用户名" />
+    <input type="password" id="password" placeholder="密码" />
+    <button onclick="login()">登录</button>
+    <div id="loginError" class="error"></div>
+</div>
+
+<div id="adminContainer" class="container" style="display:none">
     <h1>照片打印后台管理系统</h1>
     <div class="tabs">
         <button id="tabOrders" class="active">订单列表</button>
         <button id="tabPhotos">照片列表</button>
+        <button onclick="logout()" style="float:right; background:#dc3545; color:white;">退出登录</button>
     </div>
     <div id="ordersPanel" class="content">
         <h2>订单列表</h2>
@@ -37,61 +50,142 @@
         </table>
     </div>
 </div>
+
 <script>
     const API_BASE = '/api/v1';
 
-    async function fetchOrders() {
-        const res = await fetch(`${API_BASE}/orders`);
-        const json = await res.json();
-        if (json.code === 0) {
-            const tbody = document.querySelector('#ordersTable tbody');
-            tbody.innerHTML = '';
-            json.data.list.forEach(order => {
-                const row = tbody.insertRow();
-                row.insertCell(0).innerText = order.id;
-                row.insertCell(1).innerText = order.order_no;
-                row.insertCell(2).innerText = order.user_id;
-                row.insertCell(3).innerText = order.total_amount;
-                row.insertCell(4).innerText = order.status;
-                row.insertCell(5).innerText = order.address.substring(0, 30);
-                row.insertCell(6).innerText = new Date(order.created_at).toLocaleString();
-                const actionCell = row.insertCell(7);
-                const select = document.createElement('select');
-                select.innerHTML = `<option value="pending">待处理</option>
-                                    <option value="paid">已支付</option>
-                                    <option value="processing">处理中</option>
-                                    <option value="completed">已完成</option>
-                                    <option value="cancelled">已取消</option>`;
-                select.value = order.status;
-                select.onchange = async (e) => {
-                    await fetch(`${API_BASE}/orders/${order.id}/status`, {
-                        method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({status: e.target.value})
-                    });
-                    fetchOrders();
-                };
-                actionCell.appendChild(select);
+    function getToken() {
+        return localStorage.getItem('admin_token');
+    }
+
+    function setToken(token) {
+        localStorage.setItem('admin_token', token);
+    }
+
+    function clearToken() {
+        localStorage.removeItem('admin_token');
+    }
+
+    function apiRequest(url, options = {}) {
+        const token = getToken();
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return fetch(url, {
+            ...options,
+            headers
+        }).then(res => res.json());
+    }
+
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        if (!username || !password) {
+            document.getElementById('loginError').innerText = '请输入用户名和密码';
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
             });
+            const data = await res.json();
+            if (data.code === 0 && data.data.token) {
+                setToken(data.data.token);
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('adminContainer').style.display = 'block';
+                fetchOrders();
+                fetchPhotos();
+            } else {
+                document.getElementById('loginError').innerText = data.message || '登录失败';
+            }
+        } catch (err) {
+            document.getElementById('loginError').innerText = '网络错误';
+        }
+    }
+
+    function logout() {
+        clearToken();
+        document.getElementById('adminContainer').style.display = 'none';
+        document.getElementById('loginContainer').style.display = 'block';
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('loginError').innerText = '';
+    }
+
+    async function fetchOrders() {
+        const res = await apiRequest(`${API_BASE}/orders`);
+        if (res.code !== 0) {
+            alert('获取订单失败: ' + res.message);
+            return;
+        }
+        const tbody = document.querySelector('#ordersTable tbody');
+        tbody.innerHTML = '';
+        for (const order of res.data.list) {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = order.id;
+            row.insertCell(1).innerText = order.order_no;
+            row.insertCell(2).innerText = order.user_id;
+            row.insertCell(3).innerText = order.total_amount;
+            row.insertCell(4).innerText = order.status;
+            row.insertCell(5).innerText = order.address.substring(0, 30);
+            row.insertCell(6).innerText = new Date(order.created_at).toLocaleString();
+            const actionCell = row.insertCell(7);
+            const select = document.createElement('select');
+            select.innerHTML = `<option value="pending">待处理</option>
+                                <option value="paid">已支付</option>
+                                <option value="processing">处理中</option>
+                                <option value="completed">已完成</option>
+                                <option value="cancelled">已取消</option>`;
+            select.value = order.status;
+            select.onchange = async (e) => {
+                await apiRequest(`${API_BASE}/orders/${order.id}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: e.target.value })
+                });
+                fetchOrders();
+            };
+            actionCell.appendChild(select);
         }
     }
 
     async function fetchPhotos() {
-        const res = await fetch(`${API_BASE}/photos`);
-        const json = await res.json();
-        if (json.code === 0) {
-            const tbody = document.querySelector('#photosTable tbody');
-            tbody.innerHTML = '';
-            json.data.list.forEach(photo => {
-                const row = tbody.insertRow();
-                row.insertCell(0).innerText = photo.id;
-                row.insertCell(1).innerText = photo.user_id;
-                const img = document.createElement('img');
-                img.src = photo.image_url;
-                row.insertCell(2).appendChild(img);
-                row.insertCell(3).innerText = new Date(photo.created_at).toLocaleString();
-            });
+        const res = await apiRequest(`${API_BASE}/photos`);
+        if (res.code !== 0) {
+            alert('获取照片失败: ' + res.message);
+            return;
         }
+        const tbody = document.querySelector('#photosTable tbody');
+        tbody.innerHTML = '';
+        for (const photo of res.data.list) {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = photo.id;
+            row.insertCell(1).innerText = photo.user_id;
+            const img = document.createElement('img');
+            img.src = photo.image_url;
+            row.insertCell(2).appendChild(img);
+            row.insertCell(3).innerText = new Date(photo.created_at).toLocaleString();
+        }
+    }
+
+    // 检查是否已经登录
+    if (getToken()) {
+        // 简单验证 token 是否有效，尝试获取订单列表，如果失败则清除 token
+        apiRequest(`${API_BASE}/orders?page=1&size=1`).then(res => {
+            if (res.code === 0) {
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('adminContainer').style.display = 'block';
+                fetchOrders();
+                fetchPhotos();
+            } else {
+                clearToken();
+            }
+        }).catch(() => clearToken());
     }
 
     document.getElementById('tabOrders').onclick = () => {
@@ -108,7 +202,6 @@
         document.getElementById('tabOrders').classList.remove('active');
         fetchPhotos();
     };
-    fetchOrders();
 </script>
 </body>
 </html>

@@ -34,12 +34,20 @@ func main() {
 	// API 路由组
 	api := r.Group("/api/v1")
 	{
-		api.POST("/upload", controllers.UploadPhoto)
-		api.POST("/orders", controllers.CreateOrder)
-		api.GET("/orders", controllers.GetOrderList)
-		api.GET("/orders/:id", controllers.GetOrderDetail)
-		api.PUT("/orders/:id/status", controllers.UpdateOrderStatus)
-		api.GET("/photos", controllers.GetPhotoList)
+		// 公开接口
+		api.POST("/login", controllers.Login)
+		api.POST("/upload", controllers.UploadPhoto)       // 小文件上传可以公开或单独保护
+		api.POST("/orders", controllers.CreateOrder)       // 下单也可公开（需用户ID）
+		api.GET("/orders/:id", controllers.GetOrderDetail) // 查询订单公开（后续可加签名）
+
+		// 需要登录的后台接口
+		authApi := api.Group("/")
+		authApi.Use(middleware.AuthMiddleware())
+		{
+			authApi.GET("/orders", controllers.GetOrderList) // 后台订单列表
+			authApi.PUT("/orders/:id/status", controllers.UpdateOrderStatus)
+			authApi.GET("/photos", controllers.GetPhotoList)
+		}
 	}
 
 	// Swagger 文档
