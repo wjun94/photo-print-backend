@@ -35,18 +35,30 @@ func main() {
 	api := r.Group("/api/v1")
 	{
 		// 公开接口
-		api.POST("/login", controllers.Login)
-		api.POST("/upload", controllers.UploadPhoto)       // 小文件上传可以公开或单独保护
-		api.POST("/orders", controllers.CreateOrder)       // 下单也可公开（需用户ID）
-		api.GET("/orders/:id", controllers.GetOrderDetail) // 查询订单公开（后续可加签名）
+		api.POST("/admin/login", controllers.AdminLogin)
+		api.POST("/wx/login", controllers.WxLogin)
 
-		// 需要登录的后台接口
-		authApi := api.Group("/")
-		authApi.Use(middleware.AuthMiddleware())
+		// 需要登录的接口（任何有效 token 均可）
+		authorized := api.Group("/")
+		authorized.Use(middleware.AuthMiddleware())
 		{
-			authApi.GET("/orders", controllers.GetOrderList) // 后台订单列表
-			authApi.PUT("/orders/:id/status", controllers.UpdateOrderStatus)
-			authApi.GET("/photos", controllers.GetPhotoList)
+			// 小程序专用接口（只允许 wx 用户）
+			wx := authorized.Group("/")
+			wx.Use(middleware.RequireRole("wx"))
+			{
+				wx.POST("/upload", controllers.UploadPhoto)
+				wx.POST("/orders", controllers.CreateOrder)
+				wx.GET("/orders/:id", controllers.GetOrderDetail)
+			}
+
+			// 后台管理专用接口（只允许 admin 用户）
+			admin := authorized.Group("/")
+			admin.Use(middleware.RequireRole("admin"))
+			{
+				admin.GET("/orders", controllers.GetOrderList)
+				admin.PUT("/orders/:id/status", controllers.UpdateOrderStatus)
+				admin.GET("/photos", controllers.GetPhotoList)
+			}
 		}
 	}
 

@@ -1,9 +1,8 @@
 package utils
 
 import (
-	"time"
-
 	"github.com/golang-jwt/jwt/v5"
+	"time"
 )
 
 var jwtSecret = []byte("your-secret-key-change-in-production") // 生产环境从环境变量读取
@@ -11,15 +10,18 @@ var jwtSecret = []byte("your-secret-key-change-in-production") // 生产环境�
 type Claims struct {
 	UserID   uint   `json:"user_id"`
 	Username string `json:"username"`
+	UserType string `json:"user_type"` // "admin" 或 "wx"
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID uint, username string) (string, error) {
+// 生成 token：传入 userID, name, userType
+func GenerateToken(userID uint, name string, userType string) (string, error) {
 	claims := Claims{
 		UserID:   userID,
-		Username: username,
+		Username: name,
+		UserType: userType,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 30 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

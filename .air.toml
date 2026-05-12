@@ -8,6 +8,9 @@ tmp_dir = "tmp"
   include_ext = ["go", "tpl", "tmpl", "html"]
   exclude_dir = ["assets", "tmp", "vendor", "docs"]
   delay = 1000
-  stop_on_error = true
-  send_interrupt = true
-  kill_delay = 500
+  # 👇 添加这两行，这是解决问题的关键
+  poll = true
+  poll_interval = 1000
+
+[log]
+  time = true

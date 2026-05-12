@@ -340,6 +340,56 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/wx/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "小程序登录",
+                "parameters": [
+                    {
+                        "description": "生成令牌失败",
+                        "name": "login",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.LoginReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -427,7 +477,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "pending, paid, processing, completed, cancelled",
                     "type": "string"
                 },
                 "total_amount": {
@@ -437,7 +486,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
-                    "type": "string"
+                    "description": "指向 wx_user.id",
+                    "type": "integer"
                 }
             }
         },
@@ -481,8 +531,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
-                    "description": "小程序用户标识",
-                    "type": "string"
+                    "description": "指向 wx_user.id",
+                    "type": "integer"
                 }
             }
         },

@@ -1,6 +1,6 @@
 # 📸 照片打印商城后端
 
-> 网店下单打印照片系统 – 支持小程序上传照片、后台订单管理、管理员登录认证、一键 Docker 部署，并提供热重载开发环境。
+> 网店下单打印照片系统 – 支持小程序静默登录、照片上传、后台订单管理、管理员登录认证、一键 Docker 部署，并提供热重载开发环境。
 
 ![Go Version](https://img.shields.io/badge/Go-1.26.3-blue)
 ![Gin](https://img.shields.io/badge/Gin-1.10.0-lightblue)
@@ -15,8 +15,8 @@
 
 - 🖼️ **照片上传** – 小程序端直接上传 JPG/PNG，自动保存到服务器
 - 🛒 **下单打印** – 选择照片、规格、数量，生成订单
-- 📋 **订单管理** – 后台查看订单列表、详情，修改订单状态
-- 🔐 **登录认证** – 基于 JWT 的管理员登录，保护后台 API
+- 🔐 **双角色认证** – 基于 JWT 的管理员登录 **与** 小程序静默登录（微信 openid）
+- 👥 **用户分表** – 后台管理员（`admins`）与小程序用户（`wx_users`）数据隔离，权限清晰
 - 🖥️ **后台面板** – 带登录界面的 HTML 管理页，未登录自动跳转
 - 📄 **Swagger 文档** – 自动生成 API 文档，在线调试
 - 🐳 **Docker 一键运行** – 生产环境与开发环境分离，开箱即用
@@ -32,7 +32,8 @@
 | Web 框架       | [Gin](https://github.com/gin-gonic/gin)                      |
 | ORM            | [GORM](https://gorm.io/) + MySQL 驱动                        |
 | 数据库         | MySQL 8.0                                                    |
-| 认证           | JWT (golang-jwt/jwt) + bcrypt                                |
+| 认证           | JWT (golang-jwt/jwt) + bcrypt (管理员) / 微信 openid (小程序) |
+| 微信小程序     | 静默登录，通过 `code` 换取 `openid`                          |
 | API 文档       | [Swaggo](https://github.com/swaggo/swag) + Swagger UI        |
 | 容器化         | Docker + Docker Compose                                      |
 | 热重载开发     | [Air](https://github.com/cosmtrek/air)                       |
@@ -54,9 +55,9 @@ photo-print-backend/
 ├── .env.example            # 环境变量模板
 ├── config/                 # 配置加载
 ├── database/               # 数据库连接 & 迁移
-├── models/                 # 数据模型
-├── controllers/            # 业务控制器
-├── middleware/             # 中间件 (CORS, JWT)
+├── models/                 # 数据模型（Admin, WxUser, Photo, Order, OrderItem）
+├── controllers/            # 业务控制器（admin_auth, wx_auth, upload, order, photo）
+├── middleware/             # 中间件 (CORS, JWT, 角色鉴权)
 ├── utils/                  # 辅助函数 (响应, 文件, JWT)
 ├── uploads/                # 上传的照片存储目录
 ├── static/                 # 后台管理页面
@@ -78,7 +79,17 @@ git clone https://github.com/your-username/photo-print-backend.git
 cd photo-print-backend
 ```
 
-### 2️⃣ 启动服务
+### 2️⃣ 配置微信小程序（可选，如需小程序登录）
+
+在 `docker-compose.yml` 或环境变量中设置：
+
+```yaml
+environment:
+  WECHAT_APP_ID: wx1234567890abcdef
+  WECHAT_APP_SECRET: your_wechat_app_secret
+```
+
+### 3️⃣ 启动服务
 
 ```bash
 docker-compose up -d --build
@@ -90,7 +101,7 @@ docker-compose up -d --build
 - 挂载 `./uploads` 目录保存照片
 - 后端服务暴露 `8080` 端口
 
-### 3️⃣ 初始化管理员
+### 4️⃣ 初始化管理员
 
 首次启动自动创建默认管理员账户：
 
@@ -99,13 +110,13 @@ docker-compose up -d --build
 
 > ⚠️ 生产环境请务必修改默认密码！
 
-### 4️⃣ 访问服务
+### 5️⃣ 访问服务
 
 - 后台管理：`http://localhost:8080/admin`
 - Swagger 文档：`http://localhost:8080/swagger/index.html`
 - 健康检查：`http://localhost:8080/api/v1/photos`
 
-### 5️⃣ 停止服务
+### 6️⃣ 停止服务
 
 ```bash
 docker-compose down
@@ -148,7 +159,34 @@ docker-compose -f docker-compose.dev.yml logs -f backend
 docker-compose -f docker-compose.dev.yml down -v
 ```
 
-7. 🗄️ 数据库访问
+### 开发环境工作原理
+
+- `docker-compose.dev.yml` 挂载了当前项目目录到容器内的 `/app`
+- 容器内运行 [Air](https://github.com/cosmtrek/air) 进程，监听文件变化
+- 任何 `.go` 文件改动都会触发 `go build` 并重启进程
+- 数据库使用独立的 Docker 卷，数据不会丢失
+
+### 自定义 Air 配置（可选）
+
+在项目根目录创建 `.air.toml` 文件可覆盖默认行为。示例：
+
+```toml
+# .air.toml
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/main ."
+  bin = "./tmp/main"
+  include_ext = ["go", "tpl", "html"]
+  exclude_dir = ["assets", "tmp", "vendor", "docs"]
+  delay = 1000
+  stop_on_error = true
+```
+
+---
+
+## 🗄️ 数据库访问
 
 你可以通过以下方式进入 MySQL 容器并查看数据表。
 
@@ -183,38 +221,43 @@ SHOW TABLES;
 +---------------------+
 | Tables_in_photoprint|
 +---------------------+
-| order_items         |
-| orders              |
+| admins              |
+| wx_users            |
 | photos              |
-| users               |
+| orders              |
+| order_items         |
 +---------------------+
 ```
 
-
-### 开发环境工作原理
-
-- `docker-compose.dev.yml` 挂载了当前项目目录到容器内的 `/app`
-- 容器内运行 [Air](https://github.com/cosmtrek/air) 进程，监听文件变化
-- 任何 `.go` 文件改动都会触发 `go build` 并重启进程
-- 数据库使用独立的 Docker 卷，数据不会丢失
-
-### 自定义 Air 配置（可选）
-
-在项目根目录创建 `.air.toml` 文件可覆盖默认行为。示例：
-
-```toml
-# .air.toml
-root = "."
-tmp_dir = "tmp"
-
-[build]
-  cmd = "go build -o ./tmp/main ."
-  bin = "./tmp/main"
-  include_ext = ["go", "tpl", "html"]
-  exclude_dir = ["assets", "tmp", "vendor", "docs"]
-  delay = 1000
-  stop_on_error = true
+#### 4. 查询具体表内容
+```sql
+SELECT * FROM admins;                         -- 后台管理员
+SELECT * FROM wx_users;                       -- 小程序用户
+SELECT * FROM photos ORDER BY created_at DESC LIMIT 10;
+SELECT * FROM orders ORDER BY created_at DESC;
+SELECT * FROM order_items;
 ```
+
+#### 5. 退出客户端
+```sql
+EXIT;
+```
+
+### 方式二：使用宿主机 MySQL 客户端（如果映射了 3306 端口）
+
+如果你的 `docker-compose.yml` 中 `db` 服务配置了 `ports: - "3306:3306"`，可以使用本机 MySQL 客户端连接：
+```bash
+mysql -h 127.0.0.1 -P 3306 -uroot -p123456
+```
+
+### 方式三：使用图形化工具（如 TablePlus、Navicat、DBeaver）
+
+连接信息：
+- **Host**: `localhost` 或 `127.0.0.1`
+- **Port**: `3306`（或你映射的端口）
+- **User**: `root`
+- **Password**: `123456`（根据实际配置修改）
+- **Database**: `photoprint`
 
 ---
 
@@ -222,14 +265,20 @@ tmp_dir = "tmp"
 
 ### 公开接口（无需认证）
 
-| 方法 | 路径                     | 说明               |
-| ---- | ------------------------ | ------------------ |
-| POST | `/api/v1/login`          | 管理员登录         |
-| POST | `/api/v1/upload`         | 上传照片（小程序） |
-| POST | `/api/v1/orders`         | 创建订单           |
-| GET  | `/api/v1/orders/:id`     | 订单详情           |
+| 方法 | 路径                     | 说明                               |
+| ---- | ------------------------ | ---------------------------------- |
+| POST | `/api/v1/admin/login`    | 后台管理员登录（返回 admin token） |
+| POST | `/api/v1/wx/login`       | 小程序静默登录（返回 wx token）    |
 
-### 受保护接口（需要 Bearer Token）
+### 小程序专用接口（需要 Bearer Token（wx））
+
+| 方法 | 路径                     | 说明                         |
+| ---- | ------------------------ | ---------------------------- |
+| POST | `/api/v1/upload`         | 上传照片                     |
+| POST | `/api/v1/orders`         | 创建订单                     |
+| GET  | `/api/v1/orders/:id`     | 查询订单详情                 |
+
+### 后台管理接口（需要 Bearer Token（admin））
 
 | 方法 | 路径                          | 说明               |
 | ---- | ----------------------------- | ------------------ |
@@ -237,7 +286,8 @@ tmp_dir = "tmp"
 | PUT  | `/api/v1/orders/:id/status`   | 更新订单状态       |
 | GET  | `/api/v1/photos`              | 照片列表（分页）   |
 
-> 访问受保护接口时，必须在请求头中添加 `Authorization: Bearer <token>`。登录接口会返回 token。
+> 访问受保护接口时，必须在请求头中添加 `Authorization: Bearer <token>`。  
+> 小程序登录和后台管理员登录返回的 token **不可混用**（因为 token 中包含了用户类型，中间件会校验权限）。
 
 ### 页面访问
 
@@ -251,30 +301,46 @@ tmp_dir = "tmp"
 
 ---
 
+## 🔐 小程序登录流程说明
+
+1. 小程序端调用 `wx.login` 获取 `code`。
+2. 调用 `POST /api/v1/wx/login` 发送 `code`。
+3. 后端使用 `code` + `WECHAT_APP_ID` + `WECHAT_APP_SECRET` 换取 `openid`。
+4. 在 `wx_users` 表中查找或创建该 `openid` 对应的用户记录。
+5. 生成 JWT token（`user_type=wx`）并返回。
+6. 小程序将 token 存入本地存储，后续请求一律携带 `Authorization: Bearer <token>`。
+
+> 后台管理员登录使用独立的 `POST /api/v1/admin/login`，验证 `username/password`，生成的 token 中 `user_type=admin`。两种 token 通过中间件和角色分组实现路由隔离。
+
+---
+
 ## 🐳 环境变量配置
 
 ### 生产环境 (`docker-compose.yml`)
 
-| 变量名           | 默认值               | 说明                       |
-| ---------------- | -------------------- | -------------------------- |
-| `DB_HOST`        | `db`                 | MySQL 主机名               |
-| `DB_PORT`        | `3306`               | 端口                       |
-| `DB_USER`        | `root`               | 用户名                     |
-| `DB_PASSWORD`    | `123456`             | 密码                       |
-| `DB_NAME`        | `photoprint`         | 数据库名                   |
-| `SERVER_PORT`    | `8080`               | 后端监听端口               |
-| `JWT_SECRET`     | `your-secret-key`    | JWT 签名密钥（生产必须修改）|
+| 变量名               | 默认值               | 说明                                 |
+| -------------------- | -------------------- | ------------------------------------ |
+| `DB_HOST`            | `db`                 | MySQL 主机名                         |
+| `DB_PORT`            | `3306`               | 端口                                 |
+| `DB_USER`            | `root`               | 用户名                               |
+| `DB_PASSWORD`        | `123456`             | 密码                                 |
+| `DB_NAME`            | `photoprint`         | 数据库名                             |
+| `SERVER_PORT`        | `8080`               | 后端监听端口                         |
+| `JWT_SECRET`         | `your-secret-key`    | JWT 签名密钥（生产必须修改）         |
+| `WECHAT_APP_ID`      | (空)                 | 微信小程序 AppID（小程序登录需要）   |
+| `WECHAT_APP_SECRET`  | (空)                 | 微信小程序 AppSecret（小程序登录需要）|
 
 ### 开发环境 (`docker-compose.dev.yml`)
 
-开发环境同样支持以上变量，且额外挂载了源码目录。你可以在 `docker-compose.dev.yml` 中修改环境变量或添加新的配置。
+开发环境同样支持以上变量，且额外挂载了源码目录。
 
 ---
 
 ## 🔒 安全注意事项
 
-- **生产环境务必修改 `JWT_SECRET`**：在 `utils/jwt.go` 或通过环境变量设置一个强随机字符串。
-- **修改默认管理员密码**：首次登录后请立即更改密码（可通过数据库直接更新或添加修改密码 API）。
+- **生产环境务必修改 `JWT_SECRET`**：生成一个强随机字符串（例如 32 位以上）。
+- **修改默认管理员密码**：首次登录后请立即更改密码（可通过数据库直接更新）。
+- **保护微信小程序密钥**：`WECHAT_APP_SECRET` 绝对不要放在前端代码中，仅在后端环境变量中使用。
 - **启用 HTTPS**：在生产环境使用 Nginx 反向代理并配置 SSL 证书。
 - **数据库连接**：不要将数据库暴露在公网，使用云数据库的内网地址连接。
 - **文件上传限制**：代码已限制单文件最大 5MB，仅允许 jpg/png 格式。
@@ -290,3 +356,15 @@ tmp_dir = "tmp"
 ## 📄 许可证
 
 MIT © [Your Name]
+```
+
+以上 README 已完整包含：
+- 小程序静默登录特性说明
+- 用户分表（`admins` / `wx_users`）
+- 新增 `/api/v1/wx/login` 接口
+- 更新后的数据库访问表结构
+- 环境变量中增加微信小程序配置项
+- 清晰的权限分组与 API 权限表
+- 小程序登录流程解释
+
+你可以直接替换原有的 README.md 文件。

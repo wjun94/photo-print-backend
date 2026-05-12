@@ -58,14 +58,14 @@ definitions:
       order_no:
         type: string
       status:
-        description: pending, paid, processing, completed, cancelled
         type: string
       total_amount:
         type: number
       updated_at:
         type: string
       user_id:
-        type: string
+        description: 指向 wx_user.id
+        type: integer
     type: object
   models.OrderItem:
     properties:
@@ -94,8 +94,8 @@ definitions:
       image_url:
         type: string
       user_id:
-        description: 小程序用户标识
-        type: string
+        description: 指向 wx_user.id
+        type: integer
     type: object
   utils.Response:
     properties:
@@ -307,4 +307,33 @@ paths:
       summary: 上传照片
       tags:
       - 照片
+  /api/v1/wx/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 生成令牌失败
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  properties:
+                    token:
+                      type: string
+                  type: object
+              type: object
+      summary: 小程序登录
+      tags:
+      - 认证
 swagger: "2.0"

@@ -6,7 +6,7 @@ import (
 
 type Photo struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
-	UserID    string    `gorm:"index;not null" json:"user_id"` // 小程序用户标识
+	UserID    uint      `gorm:"index;not null" json:"user_id"` // 指向 wx_user.id
 	ImageURL  string    `gorm:"not null" json:"image_url"`
 	CreatedAt time.Time `json:"created_at"`
 }

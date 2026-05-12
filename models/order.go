@@ -7,10 +7,10 @@ import (
 type Order struct {
 	ID          uint        `gorm:"primarykey" json:"id"`
 	OrderNo     string      `gorm:"uniqueIndex;size:32;not null" json:"order_no"`
-	UserID      string      `gorm:"index;not null" json:"user_id"`
+	UserID      uint        `gorm:"index;not null" json:"user_id"` // 指向 wx_user.id
 	Address     string      `gorm:"type:text;not null" json:"address"`
 	TotalAmount float64     `gorm:"type:decimal(10,2);not null" json:"total_amount"`
-	Status      string      `gorm:"default:'pending';size:20" json:"status"` // pending, paid, processing, completed, cancelled
+	Status      string      `gorm:"default:'pending';size:20" json:"status"`
 	CreatedAt   time.Time   `json:"created_at"`
 	UpdatedAt   time.Time   `json:"updated_at"`
 	Items       []OrderItem `gorm:"foreignKey:OrderID" json:"items,omitempty"`

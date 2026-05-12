@@ -31,17 +31,17 @@ func InitDB() {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	// 自动迁移表
-	err = DB.AutoMigrate(&models.Photo{}, &models.Order{}, &models.OrderItem{}, &models.User{})
+	err = DB.AutoMigrate(&models.Photo{}, &models.Order{}, &models.OrderItem{}, &models.Admin{}, &models.WxUser{})
 	if err != nil {
 		log.Fatal("迁移失败: ", err)
 	}
 	log.Println("数据库连接成功，表已准备就绪")
 	// 创建默认管理员（如果不存在）
 	var count int64
-	DB.Model(&models.User{}).Count(&count)
+	DB.Model(&models.Admin{}).Count(&count)
 	if count == 0 {
 		// hashed, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-		admin := models.User{Username: "admin", Password: "admin123"}
+		admin := models.Admin{Username: "admin", Password: "admin123"}
 		DB.Create(&admin)
 		log.Println("默认管理员已创建: admin / admin123")
 	}
