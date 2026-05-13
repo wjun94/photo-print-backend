@@ -49,6 +49,7 @@ func main() {
 				wx.POST("/upload", controllers.UploadPhoto)
 				wx.POST("/orders", controllers.CreateOrder)
 				wx.GET("/orders/:id", controllers.GetOrderDetail)
+				wx.GET("/user/info", controllers.GetUserInfo) // 新增
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）
