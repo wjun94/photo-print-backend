@@ -6,6 +6,7 @@ import (
 	"photo-print-backend/controllers"
 	"photo-print-backend/database"
 	"photo-print-backend/middleware"
+	"photo-print-backend/utils"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -21,6 +22,12 @@ import (
 // @BasePath /api/v1
 func main() {
 	config.LoadConfig()
+	// 初始化雪花算法，机器ID可从环境变量读取，默认为1
+	machineID := config.AppConfig.SnowflakeMachineID
+	if machineID == 0 {
+		machineID = 1
+	}
+	utils.InitSnowflake(machineID)
 	database.InitDB()
 
 	r := gin.Default()
@@ -50,6 +57,7 @@ func main() {
 				wx.POST("/orders", controllers.CreateOrder)
 				wx.GET("/orders/:id", controllers.GetOrderDetail)
 				wx.GET("/user/info", controllers.GetUserInfo) // 新增
+				wx.GET("/orders/wx", controllers.GetWxOrders) // 新增：我的订单列表
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）

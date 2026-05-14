@@ -10,15 +10,10 @@ import (
 )
 
 func UploadPhoto(c *gin.Context) {
-	// 获取当前登录用户ID（小程序用户）
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
-		utils.Fail(c, "未登录")
-		return
-	}
-	userID, ok := userIDVal.(uint)
+	// 使用辅助函数获取用户ID（int64）
+	userID, ok := utils.GetUserID(c)
 	if !ok {
-		utils.Fail(c, "用户身份无效")
+		utils.Fail(c, "未登录或用户ID无效")
 		return
 	}
 
@@ -46,7 +41,7 @@ func UploadPhoto(c *gin.Context) {
 	}
 	imageURL := "/uploads/" + savedName
 	photo := models.Photo{
-		UserID:   userID,
+		UserID:   utils.Int64Str(userID),
 		ImageURL: imageURL,
 	}
 	if err := database.DB.Create(&photo).Error; err != nil {

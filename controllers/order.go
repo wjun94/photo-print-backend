@@ -2,12 +2,13 @@ package controllers
 
 import (
 	"fmt"
-	"gorm.io/gorm"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
 	"photo-print-backend/utils"
 	"strconv"
 	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,15 +36,10 @@ type CreateOrderReq struct {
 // @Success 200 {object} utils.Response{data=models.Order}
 // @Router /api/v1/orders [post]
 func CreateOrder(c *gin.Context) {
-	// 获取用户ID
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
-		utils.Fail(c, "未登录")
-		return
-	}
-	userID, ok := userIDVal.(uint)
+	// 使用辅助函数获取用户ID（int64）
+	userID, ok := utils.GetUserID(c)
 	if !ok {
-		utils.Fail(c, "用户身份无效")
+		utils.Fail(c, "未登录或用户ID无效")
 		return
 	}
 
@@ -61,7 +57,7 @@ func CreateOrder(c *gin.Context) {
 			return
 		}
 		// 可选：检查照片是否属于当前用户（权限校验）
-		if photo.UserID != userID {
+		if photo.UserID != utils.Int64Str(userID) {
 			utils.Fail(c, fmt.Sprintf("照片ID %d 不属于当前用户", it.PhotoID))
 			return
 		}
@@ -86,7 +82,7 @@ func CreateOrder(c *gin.Context) {
 		}
 		for _, it := range req.Items {
 			item := models.OrderItem{
-				OrderID:  order.ID,
+				OrderID:  utils.Int64Str(order.ID),
 				PhotoID:  it.PhotoID,
 				Spec:     it.Spec,
 				Quantity: it.Quantity,
@@ -190,4 +186,50 @@ func UpdateOrderStatus(c *gin.Context) {
 		return
 	}
 	utils.Success(c, nil)
+}
+
+// GetMyOrders 获取当前小程序用户的订单列表
+// @Summary 获取我的订单
+// @Tags 订单
+// @Accept json
+// @Produce json
+// @Param page query int false "页码"
+// @Param size query int false "每页数量"
+// @Success 200 {object} utils.Response{data=object{list=[]models.Order,total=int64,page=int,size=int}}
+// @Router /api/v1/orders/my [get]
+func GetWxOrders(c *gin.Context) {
+	// 从上下文中获取用户ID（由 AuthMiddleware 设置）
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		utils.Fail(c, "未登录")
+		return
+	}
+	userID, ok := userIDVal.(int64)
+	if !ok {
+		utils.Fail(c, "用户ID无效")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 10
+	}
+	offset := (page - 1) * size
+
+	var orders []models.Order
+	var total int64
+	query := database.DB.Model(&models.Order{}).Where("user_id = ?", userID).Preload("Items").Preload("Items.Photo")
+	query.Count(&total)
+	query.Offset(offset).Limit(size).Order("created_at desc").Find(&orders)
+
+	utils.Success(c, gin.H{
+		"list":  orders,
+		"total": total,
+		"page":  page,
+		"size":  size,
+	})
 }

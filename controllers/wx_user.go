@@ -17,14 +17,12 @@ import (
 // @Router /api/v1/user/info [get]
 func GetUserInfo(c *gin.Context) {
 	// 从中间件获取当前用户ID（由 AuthMiddleware 设置）
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
-		utils.Fail(c, "未登录")
-		return
-	}
-	userID, ok := userIDVal.(uint)
+	// 使用辅助函数获取用户ID（int64）
+	userID, ok := utils.GetUserID(c)
+	println("userID--------------")
+	println(userID)
 	if !ok {
-		utils.Fail(c, "无效的用户ID")
+		utils.Fail(c, "未登录或用户ID无效")
 		return
 	}
 

@@ -28,10 +28,16 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		// 将用户信息存入上下文
-		c.Set("user_type", claims.UserType)
+		// 验证 user_id 有效（非零）
+		if claims.UserID == 0 {
+			utils.Fail(c, "用户ID无效")
+			c.Abort()
+			return
+		}
+		// 存入上下文
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
+		c.Set("user_type", claims.UserType)
 		c.Next()
 	}
 }

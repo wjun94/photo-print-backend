@@ -36,7 +36,7 @@ func AdminLogin(c *gin.Context) {
 		utils.Fail(c, "用户名或密码错误")
 		return
 	}
-	token, err := utils.GenerateToken(admin.ID, admin.Username, "admin")
+	token, err := utils.GenerateToken(admin.ID.Int64(), admin.Username, "admin")
 	if err != nil {
 		utils.Fail(c, "生成令牌失败")
 		return

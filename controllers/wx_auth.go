@@ -33,7 +33,7 @@ func WxLogin(c *gin.Context) {
 		user = models.WxUser{OpenID: openid}
 		database.DB.Create(&user)
 	}
-	token, err := utils.GenerateToken(user.ID, "", "wx")
+	token, err := utils.GenerateToken(user.ID.Int64(), "", "wx")
 	if err != nil {
 		utils.Fail(c, "生成令牌失败")
 		return
