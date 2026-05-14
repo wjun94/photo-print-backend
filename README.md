@@ -171,6 +171,12 @@ cker-compose -f docker-compose.dev.yml down
 docker-compose -f docker-compose.dev.yml down -v
 ```
 
+9. **启动开发环境**
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
 ### 开发环境工作原理
 
 - `docker-compose.dev.yml` 挂载了当前项目目录到容器内的 `/app`
