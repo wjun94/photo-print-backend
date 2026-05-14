@@ -153,7 +153,19 @@ docker-compose -f docker-compose.dev.yml logs -f backend
 5. **访问服务**  
    同生产模式：`http://localhost:8080/admin`
 
-6. **停止开发环境**
+6. **重启开发环境**
+
+```bash
+docker-compose -f docker-compose.dev.yml restart
+```
+
+7. **停止但不删除数据**
+
+```bash
+cker-compose -f docker-compose.dev.yml down
+```
+
+8. **停止并彻底清空数据（重置环境）**
 
 ```bash
 docker-compose -f docker-compose.dev.yml down -v
