@@ -14,14 +14,13 @@ import (
 )
 
 type CreateOrderItem struct {
-	PhotoID  uint    `json:"photo_id" binding:"required"`
+	ImageURL string  `json:"image_url" binding:"required"`
 	Spec     string  `json:"spec" binding:"required"`
 	Quantity int     `json:"quantity" binding:"required,min=1"`
 	Price    float64 `json:"price" binding:"required,gt=0"`
 }
 
 type CreateOrderReq struct {
-	UserID  string            `json:"user_id" binding:"required"`
 	Address string            `json:"address" binding:"required"`
 	Items   []CreateOrderItem `json:"items" binding:"required,min=1"`
 }
@@ -39,7 +38,7 @@ func CreateOrder(c *gin.Context) {
 	// 使用辅助函数获取用户ID（int64）
 	userID, ok := utils.GetUserID(c)
 	if !ok {
-		utils.Fail(c, "未登录或用户ID无效")
+		utils.Unauthorized(c, "未登录或用户ID无效")
 		return
 	}
 
@@ -47,20 +46,6 @@ func CreateOrder(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Fail(c, "参数错误: "+err.Error())
 		return
-	}
-
-	// 校验照片是否存在
-	for _, it := range req.Items {
-		var photo models.Photo
-		if err := database.DB.First(&photo, it.PhotoID).Error; err != nil {
-			utils.Fail(c, fmt.Sprintf("照片ID %d 不存在", it.PhotoID))
-			return
-		}
-		// 可选：检查照片是否属于当前用户（权限校验）
-		if photo.UserID != utils.Int64Str(userID) {
-			utils.Fail(c, fmt.Sprintf("照片ID %d 不属于当前用户", it.PhotoID))
-			return
-		}
 	}
 
 	// 计算总金额
@@ -71,7 +56,7 @@ func CreateOrder(c *gin.Context) {
 	orderNo := fmt.Sprintf("PO%d", time.Now().UnixNano())
 	order := models.Order{
 		OrderNo:     orderNo,
-		UserID:      userID,
+		UserID:      utils.Int64Str(userID),
 		Address:     req.Address,
 		TotalAmount: total,
 		Status:      "pending",
@@ -82,8 +67,8 @@ func CreateOrder(c *gin.Context) {
 		}
 		for _, it := range req.Items {
 			item := models.OrderItem{
-				OrderID:  utils.Int64Str(order.ID),
-				PhotoID:  it.PhotoID,
+				OrderID:  order.ID,
+				ImageURL: it.ImageURL,
 				Spec:     it.Spec,
 				Quantity: it.Quantity,
 				Price:    it.Price,
@@ -201,12 +186,12 @@ func GetWxOrders(c *gin.Context) {
 	// 从上下文中获取用户ID（由 AuthMiddleware 设置）
 	userIDVal, exists := c.Get("user_id")
 	if !exists {
-		utils.Fail(c, "未登录")
+		utils.Unauthorized(c, "未登录")
 		return
 	}
 	userID, ok := userIDVal.(int64)
 	if !ok {
-		utils.Fail(c, "用户ID无效")
+		utils.Unauthorized(c, "用户ID无效")
 		return
 	}
 

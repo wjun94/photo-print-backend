@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"photo-print-backend/database"
-	"photo-print-backend/models"
 	"photo-print-backend/utils"
 	"strings"
 
@@ -11,9 +9,9 @@ import (
 
 func UploadPhoto(c *gin.Context) {
 	// 使用辅助函数获取用户ID（int64）
-	userID, ok := utils.GetUserID(c)
+	_, ok := utils.GetUserID(c)
 	if !ok {
-		utils.Fail(c, "未登录或用户ID无效")
+		utils.Unauthorized(c, "未登录或用户ID无效")
 		return
 	}
 
@@ -40,13 +38,7 @@ func UploadPhoto(c *gin.Context) {
 		return
 	}
 	imageURL := "/uploads/" + savedName
-	photo := models.Photo{
-		UserID:   utils.Int64Str(userID),
-		ImageURL: imageURL,
-	}
-	if err := database.DB.Create(&photo).Error; err != nil {
-		utils.Fail(c, "保存记录失败")
-		return
-	}
-	utils.Success(c, photo)
+	utils.Success(c, gin.H{
+		"url": imageURL, // 这里直接映射成 url 字段
+	})
 }

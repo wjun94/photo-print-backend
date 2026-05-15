@@ -162,7 +162,7 @@ docker-compose -f docker-compose.dev.yml restart
 7. **停止但不删除数据**
 
 ```bash
-cker-compose -f docker-compose.dev.yml down
+docker-compose -f docker-compose.dev.yml down
 ```
 
 8. **停止并彻底清空数据（重置环境）**

@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Response struct {
@@ -17,6 +18,10 @@ func Success(c *gin.Context, data interface{}) {
 
 func Fail(c *gin.Context, msg string) {
 	c.JSON(http.StatusOK, Response{Code: 1, Message: msg})
+}
+
+func Unauthorized(c *gin.Context, msg string) {
+	c.JSON(http.StatusUnauthorized, Response{Code: 1, Message: msg})
 }
 
 func Error(c *gin.Context, msg string, code int) {

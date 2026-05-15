@@ -66,7 +66,6 @@ func main() {
 			{
 				admin.GET("/orders", controllers.GetOrderList)
 				admin.PUT("/orders/:id/status", controllers.UpdateOrderStatus)
-				admin.GET("/photos", controllers.GetPhotoList)
 			}
 		}
 	}

@@ -19,16 +19,14 @@ func GetUserInfo(c *gin.Context) {
 	// 从中间件获取当前用户ID（由 AuthMiddleware 设置）
 	// 使用辅助函数获取用户ID（int64）
 	userID, ok := utils.GetUserID(c)
-	println("userID--------------")
-	println(userID)
 	if !ok {
-		utils.Fail(c, "未登录或用户ID无效")
+		utils.Unauthorized(c, "未登录或用户ID无效")
 		return
 	}
 
 	var user models.WxUser
 	if err := database.DB.First(&user, userID).Error; err != nil {
-		utils.Fail(c, "用户不存在")
+		utils.Unauthorized(c, "用户不存在")
 		return
 	}
 
