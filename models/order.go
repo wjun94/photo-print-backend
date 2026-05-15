@@ -9,13 +9,13 @@ import (
 
 type Order struct {
 	ID          utils.Int64Str `gorm:"primarykey;autoIncrement:false" json:"id"`
-	OrderNo     string         `gorm:"uniqueIndex;size:32;not null" json:"order_no"`
-	UserID      utils.Int64Str `gorm:"index;not null" json:"user_id"` // 指向 wx_user.id
+	OrderNo     string         `gorm:"uniqueIndex;size:32;not null" json:"orderNo"`
+	UserID      utils.Int64Str `gorm:"index;not null" json:"userId"` // 指向 wx_user.id
 	Address     string         `gorm:"type:text;not null" json:"address"`
-	TotalAmount float64        `gorm:"type:decimal(10,2);not null" json:"total_amount"`
+	TotalAmount float64        `gorm:"type:decimal(10,2);not null" json:"totalAmount"`
 	Status      string         `gorm:"default:'pending';size:20" json:"status"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
 	Items       []OrderItem    `gorm:"foreignKey:OrderID" json:"items,omitempty"`
 }
 

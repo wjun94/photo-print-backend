@@ -11,7 +11,7 @@ type Admin struct {
 	ID        utils.Int64Str `gorm:"primarykey;autoIncrement:false" json:"id"`
 	Username  string         `gorm:"uniqueIndex;size:50;not null" json:"username"`
 	Password  string         `gorm:"not null" json:"-"`
-	CreatedAt int64          `gorm:"autoCreateTime" json:"created_at"`
+	CreatedAt int64          `gorm:"autoCreateTime" json:"createdAt"`
 }
 
 func (a *Admin) BeforeCreate(tx *gorm.DB) error {
