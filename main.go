@@ -28,6 +28,7 @@ func main() {
 		machineID = 1
 	}
 	utils.InitSnowflake(machineID)
+	utils.InitQiniu() // 新增七牛云
 	database.InitDB()
 
 	r := gin.Default()
@@ -53,7 +54,7 @@ func main() {
 			wx := authorized.Group("/")
 			wx.Use(middleware.RequireRole("wx"))
 			{
-				wx.POST("/upload", controllers.UploadPhoto)
+				wx.POST("/upload", controllers.UploadImages) // 新上传接口
 				wx.POST("/orders", controllers.CreateOrder)
 				wx.GET("/orders/:id", controllers.GetOrderDetail)
 				wx.GET("/user/info", controllers.GetUserInfo) // 新增

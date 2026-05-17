@@ -1,44 +1,94 @@
 package controllers
 
 import (
+	"fmt"
+	"path/filepath"
+	"photo-print-backend/config"
 	"photo-print-backend/utils"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func UploadPhoto(c *gin.Context) {
-	// 使用辅助函数获取用户ID（int64）
-	_, ok := utils.GetUserID(c)
-	if !ok {
-		utils.Unauthorized(c, "未登录或用户ID无效")
+type UploadResponse struct {
+	FileURL string `json:"file_url"`
+}
+
+// UploadImages 上传图片到七牛云
+// @Summary 上传图片
+// @Description 支持单张或多张图片上传（最多9张），存储到七牛云，根据环境选择文件夹
+// @Tags 上传
+// @Accept multipart/form-data
+// @Produce json
+// @Param files formData file true "图片文件（支持多选）"
+// @Success 200 {object} utils.Response{data=[]UploadResponse}
+// @Router /api/v1/upload [post]
+func UploadImages(c *gin.Context) {
+	// 获取当前用户ID（可选，用于记录上传者）
+	userID, _ := utils.GetUserID(c)
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		utils.Fail(c, "解析表单失败")
+		return
+	}
+	files := form.File["files"]
+	if len(files) == 0 {
+		utils.Fail(c, "请选择至少一张图片")
+		return
+	}
+	if len(files) > 9 {
+		utils.Fail(c, "最多支持9张图片")
 		return
 	}
 
-	file, err := c.FormFile("file")
-	if err != nil {
-		utils.Fail(c, "上传文件失败")
-		return
+	// 确定存储前缀（开发环境 upload-dev/，生产环境 upload/）
+	env := config.AppConfig.Env // 需要在 config 中增加 Env 字段
+	var prefix string
+	if env == "production" {
+		prefix = config.AppConfig.UploadPrefixProd
+	} else {
+		prefix = config.AppConfig.UploadPrefixDev
 	}
-	// 限制5MB
-	if file.Size > 5<<20 {
-		utils.Fail(c, "文件不能超过5MB")
-		return
-	}
-	ext := strings.ToLower(file.Filename[strings.LastIndex(file.Filename, "."):])
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
-		utils.Fail(c, "只支持 jpg, jpeg, png 格式")
-		return
+	// 确保前缀以 / 结尾
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
 	}
 
-	uploadDir := "./uploads"
-	savedName, err := utils.SaveUploadedFile(file, uploadDir)
-	if err != nil {
-		utils.Fail(c, "保存文件失败")
-		return
+	var uploadedURLs []UploadResponse
+	for _, file := range files {
+		// 文件大小限制 5MB
+		if file.Size > 5<<20 {
+			utils.Fail(c, fmt.Sprintf("文件 %s 超过5MB限制", file.Filename))
+			return
+		}
+		// 检查扩展名
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			utils.Fail(c, fmt.Sprintf("文件 %s 格式不支持，仅支持 jpg/jpeg/png", file.Filename))
+			return
+		}
+
+		// 生成七牛云存储路径：前缀 + 时间戳_随机数_用户ID.扩展名
+		fileName := fmt.Sprintf("%d_%d_%d%s", time.Now().UnixNano(), userID, time.Now().Unix(), ext)
+		key := prefix + fileName
+
+		// 保存临时文件
+		tempPath := fmt.Sprintf("/tmp/%s", fileName)
+		if err := c.SaveUploadedFile(file, tempPath); err != nil {
+			utils.Fail(c, fmt.Sprintf("保存文件 %s 失败", file.Filename))
+			return
+		}
+
+		// 上传到七牛云
+		url, err := utils.UploadToQiniu(key, tempPath)
+		if err != nil {
+			utils.Fail(c, fmt.Sprintf("上传文件 %s 到七牛云失败: %v", file.Filename, err))
+			return
+		}
+		uploadedURLs = append(uploadedURLs, UploadResponse{FileURL: url})
 	}
-	imageURL := "/uploads/" + savedName
-	utils.Success(c, gin.H{
-		"url": imageURL, // 这里直接映射成 url 字段
-	})
+
+	utils.Success(c, uploadedURLs)
 }

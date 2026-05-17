@@ -13,6 +13,15 @@ type Config struct {
 	DBName             string
 	ServerPort         string
 	SnowflakeMachineID int64
+	Env                string // development / production
+	// 新增七牛云配置
+	QiniuAccessKey   string
+	QiniuSecretKey   string
+	QiniuBucket      string
+	QiniuDomain      string // 存储空间绑定的域名（如 http://cdn.example.com）
+	QiniuZone        string // 区域：z0（华东）、z1（华北）、z2（华南）、na0（北美）、as0（东南亚）
+	UploadPrefixDev  string // 开发环境上传目录前缀，如 "upload-dev/"
+	UploadPrefixProd string // 生产环境上传目录前缀，如 "upload/"
 }
 
 var AppConfig *Config
@@ -27,6 +36,15 @@ func LoadConfig() {
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 	}
 	AppConfig.SnowflakeMachineID = getEnvInt64("SNOWFLAKE_MACHINE_ID", 1)
+	AppConfig.Env = getEnv("ENV", "development")
+	// 新增七牛云配置
+	AppConfig.QiniuAccessKey = getEnv("QINIU_ACCESS_KEY", "")
+	AppConfig.QiniuSecretKey = getEnv("QINIU_SECRET_KEY", "")
+	AppConfig.QiniuBucket = getEnv("QINIU_BUCKET", "photo-print")
+	AppConfig.QiniuDomain = getEnv("QINIU_DOMAIN", "http://your-domain.com")
+	AppConfig.QiniuZone = getEnv("QINIU_ZONE", "z0")
+	AppConfig.UploadPrefixDev = getEnv("UPLOAD_PREFIX_DEV", "upload-dev/")
+	AppConfig.UploadPrefixProd = getEnv("UPLOAD_PREFIX_PROD", "upload/")
 }
 
 func getEnv(key, fallback string) string {

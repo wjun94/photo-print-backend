@@ -177,6 +177,12 @@ docker-compose -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.dev.yml up -d
 ```
 
+10.**进入容器**
+
+```bash
+docker exec -it photo-backend-dev sh
+```
+
 ### 开发环境工作原理
 
 - `docker-compose.dev.yml` 挂载了当前项目目录到容器内的 `/app`

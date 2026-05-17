@@ -7,10 +7,10 @@ tmp_dir = "tmp"
   bin = "./tmp/main"
   include_ext = ["go", "tpl", "tmpl", "html"]
   exclude_dir = ["assets", "tmp", "vendor", "docs"]
-  delay = 1000
+  delay = 0
   # 👇 添加这两行，这是解决问题的关键
   poll = true
-  poll_interval = 1000
+  poll_interval = 500
 
 [log]
   time = true
