@@ -174,7 +174,7 @@ docker-compose -f docker-compose.dev.yml down -v
 9. **启动开发环境**
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
 10.**进入容器**

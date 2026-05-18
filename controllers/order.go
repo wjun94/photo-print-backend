@@ -14,7 +14,7 @@ import (
 )
 
 type CreateOrderItem struct {
-	ImageURL string  `json:"image_url" binding:"required"`
+	ImageURL string  `json:"imageUrl" binding:"required"`
 	Spec     string  `json:"spec" binding:"required"`
 	Quantity int     `json:"quantity" binding:"required,min=1"`
 	Price    float64 `json:"price" binding:"required,gt=0"`
@@ -55,11 +55,10 @@ func CreateOrder(c *gin.Context) {
 	}
 	orderNo := fmt.Sprintf("PO%d", time.Now().UnixNano())
 	order := models.Order{
-		OrderNo:     orderNo,
-		UserID:      utils.Int64Str(userID),
-		Address:     req.Address,
-		TotalAmount: total,
-		Status:      "pending",
+		OrderNo: orderNo,
+		UserID:  utils.Int64Str(userID),
+		Address: req.Address,
+		Status:  "pending",
 	}
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&order).Error; err != nil {
@@ -83,7 +82,7 @@ func CreateOrder(c *gin.Context) {
 		utils.Fail(c, "创建订单失败")
 		return
 	}
-	database.DB.Preload("Items").Preload("Items.Photo").First(&order, order.ID)
+	database.DB.Preload("Items").First(&order, order.ID)
 	utils.Success(c, order)
 }
 
@@ -110,7 +109,7 @@ func GetOrderList(c *gin.Context) {
 	}
 	offset := (page - 1) * size
 	var orders []models.Order
-	query := database.DB.Model(&models.Order{}).Preload("Items").Preload("Items.Photo")
+	query := database.DB.Model(&models.Order{}).Preload("Items")
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -138,7 +137,7 @@ func GetOrderDetail(c *gin.Context) {
 		return
 	}
 	var order models.Order
-	if err := database.DB.Preload("Items").Preload("Items.Photo").First(&order, id).Error; err != nil {
+	if err := database.DB.Preload("Items").First(&order, id).Error; err != nil {
 		utils.Fail(c, "订单不存在")
 		return
 	}
@@ -207,7 +206,7 @@ func GetWxOrders(c *gin.Context) {
 
 	var orders []models.Order
 	var total int64
-	query := database.DB.Model(&models.Order{}).Where("user_id = ?", userID).Preload("Items").Preload("Items.Photo")
+	query := database.DB.Model(&models.Order{}).Where("user_id = ?", userID).Preload("Items")
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("created_at desc").Find(&orders)
 
