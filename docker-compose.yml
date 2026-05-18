@@ -24,12 +24,21 @@ services:
     ports:
       - "8081:8080"
     environment:
+      # 环境变量
+      ENV: production
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: root
       DB_PASSWORD: 123456
       DB_NAME: photoprint
       SERVER_PORT: 8080
+      QINIU_ACCESS_KEY: gtWDWfb8YvTS0v03ukKUYnetbcUgorUNgrgbqkYV
+      QINIU_SECRET_KEY: dmaJHu9TqaYvYtd3-Qdijt7y7Qqa_z3T8LqkQqz-
+      QINIU_BUCKET: photo-print
+      # 图片访问地址
+      QINIU_DOMAIN: http://tf2fmmjt0.hd-bkt.clouddn.com
+      QINIU_ZONE: z0
+      UPLOAD_PREFIX_DEV: upload/
     volumes:
       - ./uploads:/root/uploads   # 持久化照片文件
     depends_on:

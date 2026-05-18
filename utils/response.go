@@ -17,7 +17,7 @@ func Success(c *gin.Context, data interface{}) {
 }
 
 func Fail(c *gin.Context, msg string) {
-	c.JSON(http.StatusOK, Response{Code: 1, Message: msg})
+	c.JSON(http.StatusInternalServerError, Response{Code: 1, Message: msg})
 }
 
 func Unauthorized(c *gin.Context, msg string) {

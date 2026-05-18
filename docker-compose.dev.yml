@@ -27,6 +27,8 @@ services:
       - "8081:8080"     # HTTP 服务端口
       - "2345:2345"     # Delve 调试端口（如果使用 dlv 而非 air）
     environment:
+      # 环境变量
+      ENV: development
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: root
@@ -35,6 +37,13 @@ services:
       SERVER_PORT: 8080
       # 可选：设置代理加速
       GOPROXY: https://goproxy.cn,direct
+      QINIU_ACCESS_KEY: gtWDWfb8YvTS0v03ukKUYnetbcUgorUNgrgbqkYV
+      QINIU_SECRET_KEY: dmaJHu9TqaYvYtd3-Qdijt7y7Qqa_z3T8LqkQqz-
+      QINIU_BUCKET: photo-print
+      # 图片访问地址
+      QINIU_DOMAIN: http://tf2fmmjt0.hd-bkt.clouddn.com
+      QINIU_ZONE: z0
+      UPLOAD_PREFIX_DEV: upload-dev/
     volumes:
       # 挂载当前目录到容器内，实现代码热更新
       - .:/app

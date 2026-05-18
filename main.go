@@ -54,7 +54,8 @@ func main() {
 			wx := authorized.Group("/")
 			wx.Use(middleware.RequireRole("wx"))
 			{
-				wx.POST("/upload", controllers.UploadImages) // 新上传接口
+				wx.POST("/upload/single", controllers.UploadSingleImage) // 单图（新增）
+				wx.POST("/upload/batch", controllers.UploadImages)       // 批量上传
 				wx.POST("/orders", controllers.CreateOrder)
 				wx.GET("/orders/:id", controllers.GetOrderDetail)
 				wx.GET("/user/info", controllers.GetUserInfo) // 新增
