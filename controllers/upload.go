@@ -59,8 +59,8 @@ func UploadImages(c *gin.Context) {
 	var uploadedURLs []UploadResponse
 	for _, file := range files {
 		// 文件大小限制 5MB
-		if file.Size > 5<<20 {
-			utils.Fail(c, fmt.Sprintf("文件 %s 超过5MB限制", file.Filename))
+		if file.Size > 10<<20 {
+			utils.Fail(c, fmt.Sprintf("文件 %s 超过10MB限制", file.Filename))
 			return
 		}
 		// 检查扩展名
@@ -114,8 +114,8 @@ func UploadSingleImage(c *gin.Context) {
 	}
 
 	// 验证文件大小和扩展名等
-	if file.Size > 5<<20 {
-		utils.Fail(c, fmt.Sprintf("文件 %s 超过5MB限制", file.Filename))
+	if file.Size > 10<<20 {
+		utils.Fail(c, fmt.Sprintf("文件 %s 超过10MB限制", file.Filename))
 		return
 	}
 	ext := strings.ToLower(filepath.Ext(file.Filename))
