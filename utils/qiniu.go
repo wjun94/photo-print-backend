@@ -73,5 +73,5 @@ func UploadToQiniu(key string, localFile string) (string, error) {
 	}
 	// 返回完整 URL
 	// return fmt.Sprintf("%s/%s", domain, key), nil
-	return fmt.Sprintf("%s/%s", "", key), nil
+	return key, nil
 }

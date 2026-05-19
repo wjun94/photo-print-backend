@@ -114,7 +114,7 @@ docker-compose up -d --build
 
 - 后台管理：`http://localhost:8080/admin`
 - Swagger 文档：`http://localhost:8080/swagger/index.html`
-- 健康检查：`http://localhost:8080/api/v1/photos`
+- 健康检查：`http://localhost:8080/api/v1/user/info`
 
 ### 6️⃣ 停止服务
 
@@ -177,7 +177,7 @@ docker-compose -f docker-compose.dev.yml down -v
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
-10.**进入容器**
+10. **进入容器**
 
 ```bash
 docker exec -it photo-backend-dev sh
@@ -257,7 +257,6 @@ SHOW TABLES;
 ```sql
 SELECT * FROM admins;                         -- 后台管理员
 SELECT * FROM wx_users;                       -- 小程序用户
-SELECT * FROM photos ORDER BY created_at DESC LIMIT 10;
 SELECT * FROM orders ORDER BY created_at DESC;
 SELECT * FROM order_items;
 ```
@@ -286,29 +285,6 @@ mysql -h 127.0.0.1 -P 3306 -uroot -p123456
 ---
 
 ## 📡 API 接口概览
-
-### 公开接口（无需认证）
-
-| 方法 | 路径                     | 说明                               |
-| ---- | ------------------------ | ---------------------------------- |
-| POST | `/api/v1/admin/login`    | 后台管理员登录（返回 admin token） |
-| POST | `/api/v1/wx/login`       | 小程序静默登录（返回 wx token）    |
-
-### 小程序专用接口（需要 Bearer Token（wx））
-
-| 方法 | 路径                     | 说明                         |
-| ---- | ------------------------ | ---------------------------- |
-| POST | `/api/v1/upload`         | 上传照片                     |
-| POST | `/api/v1/orders`         | 创建订单                     |
-| GET  | `/api/v1/orders/:id`     | 查询订单详情                 |
-
-### 后台管理接口（需要 Bearer Token（admin））
-
-| 方法 | 路径                          | 说明               |
-| ---- | ----------------------------- | ------------------ |
-| GET  | `/api/v1/orders`              | 订单列表（分页）   |
-| PUT  | `/api/v1/orders/:id/status`   | 更新订单状态       |
-| GET  | `/api/v1/photos`              | 照片列表（分页）   |
 
 > 访问受保护接口时，必须在请求头中添加 `Authorization: Bearer <token>`。  
 > 小程序登录和后台管理员登录返回的 token **不可混用**（因为 token 中包含了用户类型，中间件会校验权限）。
