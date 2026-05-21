@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 	"photo-print-backend/config"
-	"photo-print-backend/controllers"
+	"photo-print-backend/controllers/admin"
+	"photo-print-backend/controllers/app"
+	"photo-print-backend/controllers/common"
 	"photo-print-backend/database"
 	"photo-print-backend/middleware"
 	"photo-print-backend/utils"
@@ -43,31 +45,31 @@ func main() {
 	api := r.Group("/api/v1")
 	{
 		// 公开接口
-		api.POST("/admin/login", controllers.AdminLogin)
-		api.POST("/wx/login", controllers.WxLogin)
+		api.POST("/admin/login", admin.AdminLogin)
+		api.POST("/wx/login", app.WxLogin)
 
 		// 需要登录的接口（任何有效 token 均可）
 		authorized := api.Group("/")
 		authorized.Use(middleware.AuthMiddleware())
 		{
 			// 小程序专用接口（只允许 wx 用户）
-			wx := authorized.Group("/")
-			wx.Use(middleware.RequireRole("wx"))
+			appGroup := authorized.Group("/")
+			appGroup.Use(middleware.RequireRole("wx"))
 			{
-				wx.POST("/upload/single", controllers.UploadSingleImage) // 单图（新增）
-				wx.POST("/upload/batch", controllers.UploadImages)       // 批量上传(没用到)
-				wx.POST("/orders", controllers.CreateOrder)
-				wx.GET("/orders/:id", controllers.GetOrderDetail)
-				wx.GET("/user/info", controllers.GetUserInfo) // 新增
-				wx.GET("/orders/wx", controllers.GetWxOrders) // 新增：我的订单列表
+				appGroup.POST("/upload/single", common.UploadSingleImage) // 单图（新增）
+				appGroup.POST("/upload/batch", common.UploadImages)       // 批量上传(没用到)
+				appGroup.POST("/orders", app.CreateOrder)
+				appGroup.GET("/orders/:id", app.GetOrderDetail)
+				appGroup.GET("/user/info", app.GetUserInfo) // 新增
+				appGroup.GET("/orders/wx", app.GetWxOrders) // 新增：我的订单列表
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）
-			admin := authorized.Group("/")
-			admin.Use(middleware.RequireRole("admin"))
+			adminGroup := authorized.Group("/")
+			adminGroup.Use(middleware.RequireRole("admin"))
 			{
-				admin.GET("/orders", controllers.GetOrderList)
-				admin.PUT("/orders/:id/status", controllers.UpdateOrderStatus)
+				adminGroup.GET("/orders", admin.GetOrderList)
+				adminGroup.PUT("/orders/:id/status", admin.UpdateOrderStatus)
 			}
 		}
 	}

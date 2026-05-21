@@ -1,4 +1,4 @@
-package controllers
+package app
 
 import (
 	"photo-print-backend/database"
