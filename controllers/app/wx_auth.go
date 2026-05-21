@@ -8,6 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type LoginReq struct {
+	Code string `json:"code" binding:"required"`
+}
+
 // struct 小程序登录
 // @Summary 小程序登录
 // @Tags 认证
