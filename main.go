@@ -69,6 +69,7 @@ func main() {
 			adminGroup.Use(middleware.RequireRole("admin"))
 			{
 				adminGroup.GET("/orders", admin.GetOrderList)
+				adminGroup.GET("/admin/info", admin.GetAdminInfo)
 				adminGroup.PUT("/orders/:id/status", admin.UpdateOrderStatus)
 			}
 		}
