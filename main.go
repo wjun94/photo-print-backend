@@ -62,15 +62,26 @@ func main() {
 				appGroup.GET("/orders/:id", app.GetOrderDetail)
 				appGroup.GET("/user/info", app.GetUserInfo) // 新增
 				appGroup.GET("/orders/wx", app.GetWxOrders) // 新增：我的订单列表
+
+				appGroup.GET("/products", app.GetProductListForWx)
+				appGroup.GET("/products/:id", app.GetProductDetailForWx)
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）
 			adminGroup := authorized.Group("/")
 			adminGroup.Use(middleware.RequireRole("admin"))
 			{
-				adminGroup.GET("/orders", admin.GetOrderList)
+				adminGroup.GET("/admin/orders", admin.GetOrderList)
 				adminGroup.GET("/admin/info", admin.GetAdminInfo)
-				adminGroup.PUT("/orders/:id/status", admin.UpdateOrderStatus)
+				adminGroup.PUT("/admin/orders/:id/status", admin.UpdateOrderStatus)
+
+				// 商品管理
+				adminGroup.POST("/admin/products", admin.CreateProduct)
+				adminGroup.GET("/admin/products", admin.GetProductList)
+				adminGroup.GET("/admin/products/:id", admin.GetProductDetail)
+				adminGroup.PUT("/admin/products/:id", admin.UpdateProduct)
+				adminGroup.PUT("/admin/products/:id/status", admin.UpdateProductStatus)
+				adminGroup.DELETE("/admin/products/:id", admin.DeleteProduct)
 			}
 		}
 	}

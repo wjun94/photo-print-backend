@@ -31,7 +31,7 @@ func InitDB() {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	// 自动迁移表
-	err = DB.AutoMigrate(&models.Order{}, &models.OrderItem{}, &models.Admin{}, &models.WxUser{})
+	err = DB.AutoMigrate(&models.Product{}, &models.ProductSpec{}, &models.Order{}, &models.OrderItem{}, &models.Admin{}, &models.WxUser{})
 	if err != nil {
 		log.Fatal("迁移失败: ", err)
 	}
