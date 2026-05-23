@@ -30,5 +30,10 @@ func GetUserInfo(c *gin.Context) {
 		return
 	}
 
+	if user.Status != models.UserStatusNormal {
+		utils.Fail(c, "账号已被禁用")
+		return
+	}
+
 	utils.Success(c, user)
 }

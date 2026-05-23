@@ -75,6 +75,9 @@ func main() {
 				adminGroup.GET("/admin/info", admin.GetAdminInfo)
 				adminGroup.PUT("/admin/orders/:id/status", admin.UpdateOrderStatus)
 
+				adminGroup.GET("/admin/wx-users", admin.GetWxUserList)
+				adminGroup.PUT("/admin/wx-users/:id/status", admin.SetUserStatus)
+
 				// 商品管理
 				adminGroup.POST("/admin/products", admin.CreateProduct)
 				adminGroup.GET("/admin/products", admin.GetProductList)
