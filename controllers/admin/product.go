@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
 	"photo-print-backend/utils"
@@ -27,8 +28,8 @@ type CreateProductSpecReq struct {
 	Image     string  `json:"image"`
 	Price     float64 `json:"price" binding:"required,gt=0"`
 	Stock     int     `json:"stock"`
-	SkuCode   string  `json:"sku_code"`
-	SortOrder int     `json:"sort_order"`
+	SkuCode   string  `json:"skuCode"`
+	SortOrder int     `json:"sortOrder"`
 }
 
 // CreateProduct 新建商品
@@ -83,7 +84,8 @@ func CreateProduct(c *gin.Context) {
 
 	// 预加载规格后返回
 	database.DB.Preload("Specs").First(&product, product.ID)
-	utils.Success(c, product)
+	// utils.Success(c, product)
+	utils.Success(c, nil)
 }
 
 // UpdateProductReq 更新商品请求
@@ -150,7 +152,8 @@ func UpdateProduct(c *gin.Context) {
 		updates["cover_image"] = *req.CoverImage
 	}
 	if req.BannerImages != nil {
-		updates["banner_images"] = *req.BannerImages
+		jsonData, _ := json.Marshal(*req.BannerImages) // 省略 err 处理需补全
+		updates["banner_images"] = string(jsonData)    // 关键修复
 	}
 	if req.Status != nil {
 		updates["status"] = *req.Status
