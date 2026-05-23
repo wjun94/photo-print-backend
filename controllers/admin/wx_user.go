@@ -78,16 +78,16 @@ func GetWxUserList(c *gin.Context) {
 	})
 }
 
-// SetUserDisabled 设置用户禁用/启用状态
+// SetUserStatus 设置用户禁用/启用状态
 // @Summary 设置用户禁用状态
 // @Description 管理员操作：禁用或启用微信用户
 // @Tags 用户管理
 // @Accept json
 // @Produce json
 // @Param id path int true "用户ID"
-// @Param disabled body object true "状态" example(isDisabled=true)
+// @Param disabled body object true "状态" example(status=0)
 // @Success 200 {object} utils.Response
-// @Router /api/v1/admin/wx-users/{id}/disable [put]
+// @Router /api/v1/admin/wx-users/{id}/status [put]
 func SetUserStatus(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -96,15 +96,37 @@ func SetUserStatus(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		Status int `json:"status" binding:"required,oneof=0 1"`
-	}
+	// 先用 map 接收，避免类型问题
+	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.Fail(c, "参数错误，status 必须为 0 或 1")
+		utils.Fail(c, "参数错误")
 		return
 	}
 
-	result := database.DB.Model(&models.WxUser{}).Where("id = ?", id).Update("status", req.Status)
+	statusVal, ok := req["status"]
+	if !ok {
+		utils.Fail(c, "缺少 status 字段")
+		return
+	}
+
+	// 支持 int 或 float64 类型
+	var status int
+	switch v := statusVal.(type) {
+	case float64:
+		status = int(v)
+	case int:
+		status = v
+	default:
+		utils.Fail(c, "status 类型错误")
+		return
+	}
+
+	if status != 0 && status != 1 {
+		utils.Fail(c, "status 必须为 0 或 1")
+		return
+	}
+
+	result := database.DB.Model(&models.WxUser{}).Where("id = ?", id).Update("status", status)
 	if result.RowsAffected == 0 {
 		utils.Fail(c, "用户不存在")
 		return
