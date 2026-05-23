@@ -23,19 +23,26 @@ type CreateOrderReq struct {
 
 // GetOrderList 订单列表 (后台)
 // @Summary 订单列表
-// @Description 后台查看订单，支持分页和状态筛选
-// @Tags 订单
+// @Description 后台查看订单，支持分页、状态筛选、订单号模糊查询、创建时间区间查询
+// @Tags 订单管理
 // @Accept json
 // @Produce json
 // @Param page query int false "页码"
 // @Param size query int false "每页数量"
 // @Param status query string false "状态"
-// @Success 200 {object} utils.Response{data=[]models.Order}
-// @Router /api/v1/orders [get]
+// @Param order_no query string false "订单号（模糊匹配）"
+// @Param createdAtStart query string false "创建时间起始，格式 2006-01-02 15:04:05"
+// @Param createdAtEnd query string false "创建时间结束，格式 2006-01-02 15:04:05"
+// @Success 200 {object} utils.Response{data=object{list=[]models.Order,total=int64,page=int,size=int}}
+// @Router /api/v1/admin/orders [get]
 func GetOrderList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 	status := c.Query("status")
+	orderNo := c.Query("orderNo")
+	createdAtStart := c.Query("createdAtStart")
+	createdAtEnd := c.Query("createdAtEnd")
+
 	if page < 1 {
 		page = 1
 	}
@@ -43,14 +50,28 @@ func GetOrderList(c *gin.Context) {
 		size = 10
 	}
 	offset := (page - 1) * size
+
 	var orders []models.Order
+	var total int64
+
 	query := database.DB.Model(&models.Order{}).Preload("Items")
+
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
-	var total int64
+	if orderNo != "" {
+		query = query.Where("order_no LIKE ?", "%"+orderNo+"%")
+	}
+	if createdAtStart != "" {
+		query = query.Where("created_at >= ?", createdAtStart)
+	}
+	if createdAtEnd != "" {
+		query = query.Where("created_at <= ?", createdAtEnd)
+	}
+
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("created_at desc").Find(&orders)
+
 	utils.Success(c, gin.H{
 		"list":  orders,
 		"total": total,
