@@ -12,13 +12,14 @@ import (
 
 // 创建商品请求结构
 type CreateProductReq struct {
-	Name        string                 `json:"name" binding:"required"`
-	Description string                 `json:"description"`
-	Detail      string                 `json:"detail"`
-	CoverImage  string                 `json:"cover_image"`
-	Status      models.ProductStatus   `json:"status"`
-	SortOrder   int                    `json:"sort_order"`
-	Specs       []CreateProductSpecReq `json:"specs" binding:"required,min=1"`
+	Name         string                 `json:"name" binding:"required"`
+	Description  string                 `json:"description"`
+	Detail       string                 `json:"detail"`
+	CoverImage   string                 `json:"coverImage"`   // 封面图
+	BannerImages []string               `json:"bannerImages"` // 轮播图数组
+	Status       models.ProductStatus   `json:"status"`
+	SortOrder    int                    `json:"sortOrder"`
+	Specs        []CreateProductSpecReq `json:"specs" binding:"required,min=1"`
 }
 
 type CreateProductSpecReq struct {
@@ -46,12 +47,13 @@ func CreateProduct(c *gin.Context) {
 	}
 
 	product := models.Product{
-		Name:        req.Name,
-		Description: req.Description,
-		Detail:      req.Detail,
-		CoverImage:  req.CoverImage,
-		Status:      req.Status,
-		SortOrder:   req.SortOrder,
+		Name:         req.Name,
+		Description:  req.Description,
+		Detail:       req.Detail,
+		CoverImage:   req.CoverImage,
+		BannerImages: req.BannerImages,
+		Status:       req.Status,
+		SortOrder:    req.SortOrder,
 	}
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
@@ -86,13 +88,14 @@ func CreateProduct(c *gin.Context) {
 
 // UpdateProductReq 更新商品请求
 type UpdateProductReq struct {
-	Name        *string                `json:"name"`
-	Description *string                `json:"description"`
-	Detail      *string                `json:"detail"`
-	CoverImage  *string                `json:"coverImage"`
-	Status      *models.ProductStatus  `json:"status"`
-	SortOrder   *int                   `json:"sortOrder"`
-	Specs       []UpdateProductSpecReq `json:"specs"` // 全量替换规格
+	Name         *string                `json:"name"`
+	Description  *string                `json:"description"`
+	Detail       *string                `json:"detail"`
+	CoverImage   *string                `json:"coverImage"`   // 指针允许未传时不更新
+	BannerImages *[]string              `json:"bannerImages"` // 指针
+	Status       *models.ProductStatus  `json:"status"`
+	SortOrder    *int                   `json:"sortOrder"`
+	Specs        []UpdateProductSpecReq `json:"specs"`
 }
 
 type UpdateProductSpecReq struct {
@@ -145,6 +148,9 @@ func UpdateProduct(c *gin.Context) {
 	}
 	if req.CoverImage != nil {
 		updates["cover_image"] = *req.CoverImage
+	}
+	if req.BannerImages != nil {
+		updates["banner_images"] = *req.BannerImages
 	}
 	if req.Status != nil {
 		updates["status"] = *req.Status

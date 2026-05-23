@@ -51,6 +51,7 @@ func main() {
 		// 需要登录的接口（任何有效 token 均可）
 		authorized := api.Group("/")
 		authorized.Use(middleware.AuthMiddleware())
+		authorized.POST("/image/delete", common.DeleteImage)
 		{
 			// 小程序专用接口（只允许 wx 用户）
 			appGroup := authorized.Group("/")
@@ -58,6 +59,7 @@ func main() {
 			{
 				appGroup.POST("/upload/single", common.UploadSingleImage) // 单图（新增）
 				appGroup.POST("/upload/batch", common.UploadImages)       // 批量上传(没用到)
+
 				appGroup.POST("/orders", app.CreateOrder)
 				appGroup.GET("/orders/:id", app.GetOrderDetail)
 				appGroup.GET("/user/info", app.GetUserInfo) // 新增
@@ -68,23 +70,26 @@ func main() {
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）
-			adminGroup := authorized.Group("/")
+			adminGroup := authorized.Group("/admin")
 			adminGroup.Use(middleware.RequireRole("admin"))
 			{
-				adminGroup.GET("/admin/orders", admin.GetOrderList)
-				adminGroup.GET("/admin/info", admin.GetAdminInfo)
-				adminGroup.PUT("/admin/orders/:id/status", admin.UpdateOrderStatus)
+				adminGroup.POST("/upload/single", common.UploadSingleAdminImage) // 单图（新增）
+				adminGroup.POST("/upload/batch", common.UploadAdminImages)       // 批量上传(没用到)
 
-				adminGroup.GET("/admin/wx-users", admin.GetWxUserList)
-				adminGroup.PUT("/admin/wx-users/:id/status", admin.SetUserStatus)
+				adminGroup.GET("/orders", admin.GetOrderList)
+				adminGroup.GET("/info", admin.GetAdminInfo)
+				adminGroup.PUT("/orders/:id/status", admin.UpdateOrderStatus)
+
+				adminGroup.GET("/wx-users", admin.GetWxUserList)
+				adminGroup.PUT("/wx-users/:id/status", admin.SetUserStatus)
 
 				// 商品管理
-				adminGroup.POST("/admin/products", admin.CreateProduct)
-				adminGroup.GET("/admin/products", admin.GetProductList)
-				adminGroup.GET("/admin/products/:id", admin.GetProductDetail)
-				adminGroup.PUT("/admin/products/:id", admin.UpdateProduct)
-				adminGroup.PUT("/admin/products/:id/status", admin.UpdateProductStatus)
-				adminGroup.DELETE("/admin/products/:id", admin.DeleteProduct)
+				adminGroup.POST("/products", admin.CreateProduct)
+				adminGroup.GET("/products", admin.GetProductList)
+				adminGroup.GET("/products/:id", admin.GetProductDetail)
+				adminGroup.PUT("/products/:id", admin.UpdateProduct)
+				adminGroup.PUT("/products/:id/status", admin.UpdateProductStatus)
+				adminGroup.DELETE("/products/:id", admin.DeleteProduct)
 			}
 		}
 	}

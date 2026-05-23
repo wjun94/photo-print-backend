@@ -75,3 +75,16 @@ func UploadToQiniu(key string, localFile string) (string, error) {
 	// return fmt.Sprintf("%s/%s", domain, key), nil
 	return key, nil
 }
+
+// DeleteFromQiniu 从七牛云删除文件
+func DeleteFromQiniu(key string) error {
+	if mac == nil {
+		return fmt.Errorf("七牛云未初始化")
+	}
+	bucketManager := storage.NewBucketManager(mac, uploadCfg)
+	err := bucketManager.Delete(bucket, key)
+	if err != nil {
+		return err
+	}
+	return nil
+}

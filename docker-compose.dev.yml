@@ -43,7 +43,10 @@ services:
       # 图片访问地址
       QINIU_DOMAIN: http://tf2fmmjt0.hd-bkt.clouddn.com
       QINIU_ZONE: z0
+      # 小程序上传图片地址
       UPLOAD_PREFIX_DEV: upload-dev/
+      # 后台上传图片地址
+      UPLOAD_PREFIX_ADMIN_DEV: upload-admin-dev/
     volumes:
       # 挂载当前目录到容器内，实现代码热更新
       - .:/app

@@ -15,13 +15,15 @@ type Config struct {
 	SnowflakeMachineID int64
 	Env                string // development / production
 	// 新增七牛云配置
-	QiniuAccessKey   string
-	QiniuSecretKey   string
-	QiniuBucket      string
-	QiniuDomain      string // 存储空间绑定的域名（如 http://cdn.example.com）
-	QiniuZone        string // 区域：z0（华东）、z1（华北）、z2（华南）、na0（北美）、as0（东南亚）
-	UploadPrefixDev  string // 开发环境上传目录前缀，如 "upload-dev/"
-	UploadPrefixProd string // 生产环境上传目录前缀，如 "upload/"
+	QiniuAccessKey        string
+	QiniuSecretKey        string
+	QiniuBucket           string
+	QiniuDomain           string // 存储空间绑定的域名（如 http://cdn.example.com）
+	QiniuZone             string // 区域：z0（华东）、z1（华北）、z2（华南）、na0（北美）、as0（东南亚）
+	UploadPrefixDev       string // 开发环境上传目录前缀，如 "upload-dev/"
+	UploadPrefixProd      string // 生产环境上传目录前缀，如 "upload/"
+	UploadPrefixAdminDev  string // 开发环境上传目录前缀，如 "upload-admin-dev/"
+	UploadPrefixAdminProd string // 生产环境上传目录前缀，如 "upload-admin/"
 }
 
 var AppConfig *Config
@@ -45,6 +47,8 @@ func LoadConfig() {
 	AppConfig.QiniuZone = getEnv("QINIU_ZONE", "z0")
 	AppConfig.UploadPrefixDev = getEnv("UPLOAD_PREFIX_DEV", "upload-dev/")
 	AppConfig.UploadPrefixProd = getEnv("UPLOAD_PREFIX_PROD", "upload/")
+	AppConfig.UploadPrefixAdminDev = getEnv("UPLOAD_PREFIX_ADMIN_DEV", "upload-admin-dev/")
+	AppConfig.UploadPrefixAdminProd = getEnv("UPLOAD_PREFIX_ADMIN_PROD", "upload-admin/")
 }
 
 func getEnv(key, fallback string) string {
