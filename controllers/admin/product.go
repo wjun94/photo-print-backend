@@ -209,7 +209,7 @@ func GetProductList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 	status := c.Query("status")
-	keyword := c.Query("keyword")
+	name := c.Query("name")
 
 	if page < 1 {
 		page = 1
@@ -226,8 +226,8 @@ func GetProductList(c *gin.Context) {
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
-	if keyword != "" {
-		query = query.Where("name LIKE ?", "%"+keyword+"%")
+	if name != "" {
+		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("sort_order asc, created_at desc").Find(&products)
