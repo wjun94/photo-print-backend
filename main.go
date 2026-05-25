@@ -52,6 +52,7 @@ func main() {
 		authorized := api.Group("/")
 		authorized.Use(middleware.AuthMiddleware())
 		authorized.POST("/image/delete", common.DeleteImage)
+		authorized.GET("/regions/all", common.GetAllRegions)
 		{
 			// 小程序专用接口（只允许 wx 用户）
 			appGroup := authorized.Group("/")
@@ -67,6 +68,14 @@ func main() {
 
 				appGroup.GET("/products", app.GetProductListForWx)
 				appGroup.GET("/products/:id", app.GetProductDetailForWx)
+
+				// ... 地址
+				appGroup.GET("/address/list", app.GetAddressList)
+				appGroup.GET("/address/:id", app.GetAddressDetail)
+				appGroup.POST("/address", app.AddAddress)
+				appGroup.PUT("/address/:id", app.UpdateAddress)
+				appGroup.DELETE("/address/:id", app.DeleteAddress)
+				appGroup.PUT("/address/:id/default", app.SetDefaultAddress)
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）
