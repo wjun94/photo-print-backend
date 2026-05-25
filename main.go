@@ -69,7 +69,7 @@ func main() {
 				appGroup.GET("/products", app.GetProductListForWx)
 				appGroup.GET("/products/:id", app.GetProductDetailForWx)
 
-				// ... 地址
+				// 地址
 				appGroup.GET("/address/list", app.GetAddressList)
 				appGroup.GET("/address/:id", app.GetAddressDetail)
 				appGroup.POST("/address", app.AddAddress)

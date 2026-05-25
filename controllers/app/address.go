@@ -13,12 +13,19 @@ type AddressReq struct {
 	ID           string `json:"id"`
 	ReceiverName string `json:"receiverName" binding:"required"`
 	Mobile       string `json:"mobile" binding:"required"`
-	ProvinceID   int64  `json:"provinceId" binding:"required"`
-	CityID       int64  `json:"cityId" binding:"required"`
-	DistrictID   int64  `json:"districtId" binding:"required"`
+	ProvinceID   string `json:"provinceId" binding:"required"`
+	CityID       string `json:"cityId" binding:"required"`
+	DistrictID   string `json:"districtId" binding:"required"`
 	Detail       string `json:"detail" binding:"required"`
 	Doorplate    string `json:"doorplate"`
 	IsDefault    bool   `json:"isDefault"`
+}
+
+type AddressListResponse struct {
+	models.Address
+	ProvinceName string `json:"provinceName"`
+	CityName     string `json:"cityName"`
+	DistrictName string `json:"districtName"`
 }
 
 // GetAddressList 获取当前用户的收货地址列表（分页）
@@ -46,8 +53,18 @@ func GetAddressList(c *gin.Context) {
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("is_default DESC, created_at DESC").Find(&addresses)
 
+	var resp []AddressListResponse
+	for _, addr := range addresses {
+		resp = append(resp, AddressListResponse{
+			Address:      addr,
+			ProvinceName: utils.GetRegionName(addr.ProvinceID),
+			CityName:     utils.GetRegionName(addr.CityID),
+			DistrictName: utils.GetRegionName(addr.DistrictID),
+		})
+	}
+
 	utils.Success(c, gin.H{
-		"list":  addresses,
+		"list":  resp,
 		"total": total,
 		"page":  page,
 		"size":  size,
@@ -74,9 +91,9 @@ func AddAddress(c *gin.Context) {
 		UserID:       utils.Int64Str(userID),
 		ReceiverName: req.ReceiverName,
 		Mobile:       req.Mobile,
-		ProvinceID:   utils.Int64Str(req.ProvinceID),
-		CityID:       utils.Int64Str(req.CityID),
-		DistrictID:   utils.Int64Str(req.DistrictID),
+		ProvinceID:   req.ProvinceID,
+		CityID:       req.CityID,
+		DistrictID:   req.DistrictID,
 		Detail:       req.Detail,
 		Doorplate:    req.Doorplate,
 		IsDefault:    req.IsDefault,

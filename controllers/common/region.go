@@ -21,7 +21,7 @@ type rawRegion struct {
 
 // RegionNode 树形节点 (保持输出结构不变)
 type RegionNode struct {
-	ID       int64        `json:"id"`
+	ID       string       `json:"id"`
 	Name     string       `json:"name"`
 	Children []RegionNode `json:"children,omitempty"`
 }
@@ -75,7 +75,7 @@ func convertToRegionNode(raw []rawRegion) []RegionNode {
 		id, _ := strconv.ParseInt(r.Code, 10, 64) // 忽略错误（已在日志中处理）
 
 		node := RegionNode{
-			ID:   id,
+			ID:   strconv.FormatInt(id, 10),
 			Name: r.Name,
 		}
 
