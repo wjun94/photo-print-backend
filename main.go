@@ -48,6 +48,12 @@ func main() {
 		api.POST("/admin/login", admin.AdminLogin)
 		api.POST("/wx/login", app.WxLogin)
 
+		{
+			// 微信小程序产品接口
+			api.GET("/products", app.GetProductListForWx)
+			api.GET("/products/:id", app.GetProductDetailForWx)
+		}
+
 		// 需要登录的接口（任何有效 token 均可）
 		authorized := api.Group("/")
 		authorized.Use(middleware.AuthMiddleware())
@@ -61,13 +67,12 @@ func main() {
 				appGroup.POST("/upload/single", common.UploadSingleImage) // 单图（新增）
 				appGroup.POST("/upload/batch", common.UploadImages)       // 批量上传(没用到)
 
-				appGroup.POST("/orders", app.CreateOrder)
+				appGroup.POST("/order/preview", app.PreviewOrder)
+				appGroup.POST("/order/submit", app.SubmitOrderDirect)
+				appGroup.POST("/orders", app.CreateOrder) // 创建其他平台下单的订单
 				appGroup.GET("/orders/:id", app.GetOrderDetail)
 				appGroup.GET("/user/info", app.GetUserInfo) // 新增
-				appGroup.GET("/orders/wx", app.GetWxOrders) // 新增：我的订单列表
-
-				appGroup.GET("/products", app.GetProductListForWx)
-				appGroup.GET("/products/:id", app.GetProductDetailForWx)
+				appGroup.GET("/orders/wx", app.GetWxOrders) // 我的订单列表
 
 				// 地址
 				appGroup.GET("/address/list", app.GetAddressList)

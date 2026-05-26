@@ -15,6 +15,7 @@ type ProductSpec struct {
 	Stock     int            `gorm:"default:0" json:"stock"` // 库存
 	SkuCode   string         `gorm:"size:50" json:"skuCode"` // 可选SKU编码
 	SortOrder int            `gorm:"default:0" json:"sortOrder"`
+	Product   Product        `gorm:"foreignKey:ProductID" json:"product,omitempty"` // 添加关联
 }
 
 func (ps *ProductSpec) BeforeCreate(tx *gorm.DB) error {
