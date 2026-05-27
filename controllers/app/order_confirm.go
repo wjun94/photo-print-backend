@@ -14,7 +14,6 @@ import (
 
 type PreviewOrderItem struct {
 	ImageURL string `json:"imageUrl" binding:"required"`
-	Spec     string `json:"spec" binding:"required"`
 	Quantity int    `json:"quantity" binding:"required,min=1"`
 }
 
@@ -36,6 +35,18 @@ type PreviewItemResponse struct {
 	ImageURL    string  `json:"imageUrl"`
 }
 
+// SpecSummaryResponse 规格汇总响应（不重复）
+type SpecSummaryResponse struct {
+	ProductID     string  `json:"productId"`
+	ProductName   string  `json:"productName"`
+	SpecID        string  `json:"specId"`
+	SpecName      string  `json:"specName"`
+	Price         float64 `json:"price"`
+	TotalQuantity int     `json:"totalQuantity"` // 该规格的总数量
+	TotalSubtotal float64 `json:"totalSubtotal"` // 该规格的总小计
+	ImageURL      string  `json:"imageUrl"`
+}
+
 func PreviewOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -51,6 +62,9 @@ func PreviewOrder(c *gin.Context) {
 
 	var previewItems []PreviewItemResponse
 	var totalAmount float64
+
+	// 用于统计规格汇总的map，key为specID字符串
+	specSummaryMap := make(map[string]*SpecSummaryResponse)
 
 	// 逐个验证商品规格
 	for _, it := range req.Items {
@@ -88,6 +102,7 @@ func PreviewOrder(c *gin.Context) {
 		subtotal := float64(it.Quantity) * spec.Price
 		totalAmount += subtotal
 
+		// 添加到单个图片项列表
 		previewItems = append(previewItems, PreviewItemResponse{
 			ProductID:   product.ID.String(),
 			ProductName: product.Name,
@@ -96,8 +111,34 @@ func PreviewOrder(c *gin.Context) {
 			Price:       spec.Price,
 			Quantity:    it.Quantity,
 			Subtotal:    subtotal,
-			ImageURL:    product.CoverImage,
+			ImageURL:    it.ImageURL, // 注意：这里修正为使用item的图片URL，而不是商品封面
 		})
+
+		// 更新规格汇总
+		specIDStr := spec.ID.String()
+		if summary, exists := specSummaryMap[specIDStr]; exists {
+			// 规格已存在，累加数量和小计
+			summary.TotalQuantity += it.Quantity
+			summary.TotalSubtotal += subtotal
+		} else {
+			// 规格不存在，新建汇总条目
+			specSummaryMap[specIDStr] = &SpecSummaryResponse{
+				ProductID:     product.ID.String(),
+				ProductName:   product.Name,
+				SpecID:        specIDStr,
+				SpecName:      spec.Name,
+				Price:         spec.Price,
+				TotalQuantity: it.Quantity,
+				TotalSubtotal: subtotal,
+				ImageURL:      it.ImageURL,
+			}
+		}
+	}
+
+	// 将map转换为数组
+	var specSummaries []SpecSummaryResponse
+	for _, summary := range specSummaryMap {
+		specSummaries = append(specSummaries, *summary)
 	}
 
 	// 获取用户默认地址
@@ -118,6 +159,7 @@ func PreviewOrder(c *gin.Context) {
 
 	utils.Success(c, gin.H{
 		"items":          previewItems,
+		"specs":          specSummaries, // 新增：不重复的规格汇总数组
 		"totalAmount":    totalAmount,
 		"defaultAddress": addressResp,
 	})

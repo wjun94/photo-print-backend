@@ -185,8 +185,8 @@ func UploadAdminImages(c *gin.Context) {
 	var uploadedURLs []string
 	for _, file := range files {
 		// 文件校验（大小、扩展名）
-		if file.Size > 5<<20 {
-			utils.Fail(c, fmt.Sprintf("文件 %s 超过5MB", file.Filename))
+		if file.Size > 10<<20 {
+			utils.Fail(c, fmt.Sprintf("文件 %s 超过10MB", file.Filename))
 			return
 		}
 		ext := strings.ToLower(filepath.Ext(file.Filename))
@@ -240,9 +240,9 @@ func UploadSingleAdminImage(c *gin.Context) {
 		return
 	}
 
-	// 限制 5MB
-	if file.Size > 5<<20 {
-		utils.Fail(c, "文件不能超过5MB")
+	// 限制 10MB
+	if file.Size > 10<<20 {
+		utils.Fail(c, "文件不能超过10MB")
 		return
 	}
 
