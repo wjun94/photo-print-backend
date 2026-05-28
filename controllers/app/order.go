@@ -25,6 +25,47 @@ type CreateOrderReq struct {
 	Items   []CreateOrderItem `json:"items" binding:"required,min=1"`
 }
 
+// buildOrderSpecSummaries 基于 spec 字段分组汇总
+func buildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error) {
+	var items []models.OrderItem
+	// 预加载规格和商品
+	err := database.DB.
+		Where("order_id = ?", orderID).
+		Preload("SpecInfo.Product").
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 按 SpecID 分组汇总
+	group := make(map[int64]*models.SpecSummaryResponse)
+	for _, it := range items {
+		spec := it.SpecInfo
+		product := spec.Product
+		specID := spec.ID.Int64()
+		if _, ok := group[specID]; !ok {
+			group[specID] = &models.SpecSummaryResponse{
+				ProductID:     product.ID.String(),
+				ProductName:   product.Name,
+				SpecID:        spec.ID.String(),
+				SpecName:      spec.Name,
+				Price:         it.Price, // 订单项中的价格（可能与规格当前价格不同，但以订单为准）
+				TotalQuantity: 0,
+				TotalSubtotal: 0,
+				ImageURL:      it.ImageURL,
+			}
+		}
+		group[specID].TotalQuantity += it.Quantity
+		group[specID].TotalSubtotal += float64(it.Quantity) * it.Price
+	}
+
+	summaries := make([]models.SpecSummaryResponse, 0, len(group))
+	for _, v := range group {
+		summaries = append(summaries, *v)
+	}
+	return summaries, nil
+}
+
 // CreateOrder 创建订单
 // @Summary 创建订单
 // @Description 用户下单打印照片
@@ -93,7 +134,7 @@ func CreateOrder(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.Order}
 // @Router /api/v1/orders/{id} [get]
 func GetOrderDetail(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		utils.Fail(c, "无效ID")
 		return
@@ -103,6 +144,8 @@ func GetOrderDetail(c *gin.Context) {
 		utils.Fail(c, "订单不存在")
 		return
 	}
+	summaries, _ := buildOrderSpecSummaries(order.ID.Int64())
+	order.Specs = summaries
 	utils.Success(c, order)
 }
 
@@ -143,6 +186,14 @@ func GetWxOrders(c *gin.Context) {
 	query := database.DB.Model(&models.Order{}).Where("user_id = ?", userID).Preload("Items")
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("created_at desc").Find(&orders)
+
+	// 为每个订单构建 SpecSummaries
+	for i := range orders {
+		summaries, err := buildOrderSpecSummaries(orders[i].ID.Int64())
+		if err == nil {
+			orders[i].Specs = summaries
+		}
+	}
 
 	utils.Success(c, gin.H{
 		"list":  orders,

@@ -35,18 +35,6 @@ type PreviewItemResponse struct {
 	ImageURL    string  `json:"imageUrl"`
 }
 
-// SpecSummaryResponse 规格汇总响应（不重复）
-type SpecSummaryResponse struct {
-	ProductID     string  `json:"productId"`
-	ProductName   string  `json:"productName"`
-	SpecID        string  `json:"specId"`
-	SpecName      string  `json:"specName"`
-	Price         float64 `json:"price"`
-	TotalQuantity int     `json:"totalQuantity"` // 该规格的总数量
-	TotalSubtotal float64 `json:"totalSubtotal"` // 该规格的总小计
-	ImageURL      string  `json:"imageUrl"`
-}
-
 func PreviewOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -64,7 +52,7 @@ func PreviewOrder(c *gin.Context) {
 	var totalAmount float64
 
 	// 用于统计规格汇总的map，key为specID字符串
-	specSummaryMap := make(map[string]*SpecSummaryResponse)
+	specSummaryMap := make(map[string]*models.SpecSummaryResponse)
 
 	// 逐个验证商品规格
 	for _, it := range req.Items {
@@ -122,7 +110,7 @@ func PreviewOrder(c *gin.Context) {
 			summary.TotalSubtotal += subtotal
 		} else {
 			// 规格不存在，新建汇总条目
-			specSummaryMap[specIDStr] = &SpecSummaryResponse{
+			specSummaryMap[specIDStr] = &models.SpecSummaryResponse{
 				ProductID:     product.ID.String(),
 				ProductName:   product.Name,
 				SpecID:        specIDStr,
@@ -136,7 +124,7 @@ func PreviewOrder(c *gin.Context) {
 	}
 
 	// 将map转换为数组
-	var specSummaries []SpecSummaryResponse
+	var specSummaries []models.SpecSummaryResponse
 	for _, summary := range specSummaryMap {
 		specSummaries = append(specSummaries, *summary)
 	}
@@ -282,6 +270,7 @@ func SubmitOrder(c *gin.Context) {
 				OrderID:  order.ID,
 				ImageURL: ch.spec.Product.CoverImage, // 使用商品主图
 				Spec:     ch.spec.Name,
+				SpecID:   ch.spec.ID,
 				Quantity: ch.qty,
 				Price:    ch.spec.Price,
 			}
