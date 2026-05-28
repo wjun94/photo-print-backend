@@ -157,10 +157,16 @@ func PreviewOrder(c *gin.Context) {
 		addressResp = nil
 	}
 
+	// 在计算 totalAmount 之后
+	freight := utils.CalculateFreight(totalAmount)
+	actualAmount := totalAmount + freight
+
 	utils.Success(c, gin.H{
 		"items":          previewItems,
 		"specs":          specSummaries, // 新增：不重复的规格汇总数组
 		"totalAmount":    totalAmount,
+		"freight":        freight,
+		"actualAmount":   actualAmount,
 		"defaultAddress": addressResp,
 	})
 }
@@ -245,12 +251,19 @@ func SubmitOrder(c *gin.Context) {
 		fullAddress += " " + address.Doorplate
 	}
 
+	// 计算运费和实付
+	freight := utils.CalculateFreight(totalAmount)
+	actualAmount := totalAmount + freight
+
 	order := models.Order{
-		OrderNo: orderNo,
-		UserID:  utils.Int64Str(userID),
-		Address: fullAddress,
-		Amount:  totalAmount,
-		Status:  "pending",
+		OrderNo:      orderNo,
+		UserID:       utils.Int64Str(userID),
+		Address:      fullAddress,
+		Amount:       totalAmount,
+		Freight:      freight,
+		ActualAmount: actualAmount,
+		Remark:       req.Remark,
+		Status:       "pending",
 	}
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {

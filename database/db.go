@@ -33,6 +33,7 @@ func InitDB() {
 	// 自动迁移表
 	err = DB.AutoMigrate(
 		&models.Address{},
+		&models.FreightSetting{},
 		&models.Product{},
 		&models.ProductSpec{},
 		&models.Order{},

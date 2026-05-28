@@ -32,6 +32,8 @@ services:
       DB_PASSWORD: 123456
       DB_NAME: photoprint
       SERVER_PORT: 8080
+      FIXED_FREIGHT: 10
+      FREE_SHIPPING_AMOUNT: 28
       QINIU_ACCESS_KEY: gtWDWfb8YvTS0v03ukKUYnetbcUgorUNgrgbqkYV
       QINIU_SECRET_KEY: dmaJHu9TqaYvYtd3-Qdijt7y7Qqa_z3T8LqkQqz-
       QINIU_BUCKET: photo-print
@@ -39,9 +41,9 @@ services:
       QINIU_DOMAIN: http://tf2fmmjt0.hd-bkt.clouddn.com
       QINIU_ZONE: z0
       # 小程序上传图片地址
-      UPLOAD_PREFIX_PROD: upload/
+      UPLOAD_PREFIX_PROD: prod/upload/
       # 后台上传图片地址
-      UPLOAD_PREFIX_ADMIN_PROD: upload-admin/
+      UPLOAD_PREFIX_ADMIN_PROD: prod/upload-admin/
     volumes:
       - ./uploads:/root/uploads   # 持久化照片文件
     depends_on:

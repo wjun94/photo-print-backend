@@ -7,15 +7,18 @@ import (
 )
 
 type Order struct {
-	ID        utils.Int64Str  `gorm:"primarykey;autoIncrement:false" json:"id"`
-	OrderNo   string          `gorm:"uniqueIndex;size:32;not null" json:"orderNo"`
-	UserID    utils.Int64Str  `gorm:"index;not null" json:"userId"` // 指向 wx_user.id
-	Address   string          `gorm:"type:text;not null" json:"address"`
-	Amount    float64         `gorm:"type:decimal(10,2);not null" json:"amount"`
-	Status    string          `gorm:"default:'pending';size:20" json:"status"`
-	CreatedAt utils.LocalTime `json:"createdAt"`
-	UpdatedAt utils.LocalTime `json:"updatedAt"`
-	Items     []OrderItem     `gorm:"foreignKey:OrderID" json:"items,omitempty"`
+	ID           utils.Int64Str  `gorm:"primarykey;autoIncrement:false" json:"id"`
+	OrderNo      string          `gorm:"uniqueIndex;size:32;not null" json:"orderNo"`
+	UserID       utils.Int64Str  `gorm:"index;not null" json:"userId"` // 指向 wx_user.id
+	Address      string          `gorm:"type:text;not null" json:"address"`
+	Status       string          `gorm:"default:'pending';size:20" json:"status"`
+	CreatedAt    utils.LocalTime `json:"createdAt"`
+	UpdatedAt    utils.LocalTime `json:"updatedAt"`
+	Remark       string          `json:"remark"`                                               // 可选备注
+	Amount       float64         `gorm:"type:decimal(10,2);not null" json:"amount"`            // 商品总额
+	Freight      float64         `gorm:"type:decimal(10,2);not null;default:0" json:"freight"` // 运费
+	ActualAmount float64         `gorm:"type:decimal(10,2);not null" json:"actualAmount"`      // 实付 = amount + freight
+	Items        []OrderItem     `gorm:"foreignKey:OrderID" json:"items,omitempty"`
 }
 
 func (o *Order) BeforeCreate(tx *gorm.DB) error {
