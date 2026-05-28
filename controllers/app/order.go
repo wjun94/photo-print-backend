@@ -149,6 +149,16 @@ func GetOrderDetail(c *gin.Context) {
 	utils.Success(c, order)
 }
 
+// 微信订单列表返回数据
+type OrderListResult struct {
+	ID           utils.Int64Str               `gorm:"primarykey;autoIncrement:false" json:"id"`
+	OrderNo      string                       `gorm:"uniqueIndex;size:32;not null" json:"orderNo"`
+	Status       string                       `gorm:"default:'pending';size:20" json:"status"`
+	ActualAmount float64                      `gorm:"type:decimal(10,2);not null" json:"actualAmount"` // 实付 = amount + freight
+	CreatedAt    utils.LocalTime              `json:"createdAt"`
+	Specs        []models.SpecSummaryResponse `gorm:"-" json:"specs"`
+}
+
 // GetWxOrders 获取当前小程序用户的订单列表
 // @Summary 获取我的订单
 // @Tags 订单
@@ -180,8 +190,9 @@ func GetWxOrders(c *gin.Context) {
 		size = 10
 	}
 	offset := (page - 1) * size
-
 	var orders []models.Order
+
+	var result []OrderListResult
 	var total int64
 	query := database.DB.Model(&models.Order{}).Where("user_id = ?", userID).Preload("Items")
 	query.Count(&total)
@@ -190,13 +201,20 @@ func GetWxOrders(c *gin.Context) {
 	// 为每个订单构建 SpecSummaries
 	for i := range orders {
 		summaries, err := buildOrderSpecSummaries(orders[i].ID.Int64())
+		item := OrderListResult{
+			ID:        orders[i].ID,
+			OrderNo:   orders[i].OrderNo,
+			Status:    orders[i].Status,
+			CreatedAt: orders[i].CreatedAt,
+		}
+		result = append(result, item)
 		if err == nil {
-			orders[i].Specs = summaries
+			result[i].Specs = summaries
 		}
 	}
 
 	utils.Success(c, gin.H{
-		"list":  orders,
+		"list":  result,
 		"total": total,
 		"page":  page,
 		"size":  size,

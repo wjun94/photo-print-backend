@@ -71,8 +71,8 @@ func main() {
 				appGroup.POST("/order/submit", app.SubmitOrder)
 				appGroup.POST("/orders", app.CreateOrder) // 创建其他平台下单的订单
 				appGroup.GET("/orders/:id", app.GetOrderDetail)
-				appGroup.GET("/user/info", app.GetUserInfo) // 新增
-				appGroup.GET("/orders/wx", app.GetWxOrders) // 我的订单列表
+				appGroup.GET("/user/info", app.GetUserInfo)   // 新增
+				appGroup.GET("/orders/list", app.GetWxOrders) // 我的订单列表
 
 				// 地址
 				appGroup.GET("/address/list", app.GetAddressList)
