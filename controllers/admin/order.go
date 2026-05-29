@@ -21,6 +21,47 @@ type CreateOrderReq struct {
 	Items   []CreateOrderItem `json:"items" binding:"required,min=1"`
 }
 
+// buildOrderSpecSummaries 基于 spec 字段分组汇总
+func buildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error) {
+	var items []models.OrderItem
+	// 预加载规格和商品
+	err := database.DB.
+		Where("order_id = ?", orderID).
+		Preload("SpecInfo.Product").
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 按 SpecID 分组汇总
+	group := make(map[int64]*models.SpecSummaryResponse)
+	for _, it := range items {
+		spec := it.SpecInfo
+		product := spec.Product
+		specID := spec.ID.Int64()
+		if _, ok := group[specID]; !ok {
+			group[specID] = &models.SpecSummaryResponse{
+				ProductID:     product.ID.String(),
+				ProductName:   product.Name,
+				SpecID:        spec.ID.String(),
+				SpecName:      spec.Name,
+				Price:         it.Price, // 订单项中的价格（可能与规格当前价格不同，但以订单为准）
+				TotalQuantity: 0,
+				TotalSubtotal: 0,
+				ImageURL:      it.ImageURL,
+			}
+		}
+		group[specID].TotalQuantity += it.Quantity
+		group[specID].TotalSubtotal += float64(it.Quantity) * it.Price
+	}
+
+	summaries := make([]models.SpecSummaryResponse, 0, len(group))
+	for _, v := range group {
+		summaries = append(summaries, *v)
+	}
+	return summaries, nil
+}
+
 // GetOrderList 订单列表 (后台)
 // @Summary 订单列表
 // @Description 后台查看订单，支持分页、状态筛选、订单号模糊查询、创建时间区间查询
@@ -54,7 +95,7 @@ func GetOrderList(c *gin.Context) {
 	var orders []models.Order
 	var total int64
 
-	query := database.DB.Model(&models.Order{}).Preload("Items")
+	query := database.DB.Model(&models.Order{}).Preload("Address")
 
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -71,6 +112,13 @@ func GetOrderList(c *gin.Context) {
 
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("created_at desc").Find(&orders)
+
+	for i := range orders {
+		summaries, err := buildOrderSpecSummaries(orders[i].ID.Int64())
+		if err == nil {
+			orders[i].Specs = summaries
+		}
+	}
 
 	utils.Success(c, gin.H{
 		"list":  orders,

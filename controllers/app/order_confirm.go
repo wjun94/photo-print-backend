@@ -308,3 +308,43 @@ func SubmitOrder(c *gin.Context) {
 		"orderId": order.ID.String(),
 	})
 }
+
+// ConfirmReceipt 用户确认收货
+func ConfirmReceipt(c *gin.Context) {
+	var req struct {
+		OrderID string `json:"orderId" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.Fail(c, "参数错误")
+		return
+	}
+
+	orderID, err := strconv.ParseInt(req.OrderID, 10, 64)
+	if err != nil {
+		utils.Fail(c, "无效订单ID")
+		return
+	}
+
+	var order models.Order
+	if err := database.DB.First(&order, orderID).Error; err != nil {
+		utils.Fail(c, "订单不存在")
+		return
+	}
+
+	// 只有已发货的订单才能确认收货
+	if order.Status != models.OrderStatusShipped {
+		utils.Fail(c, "订单未发货，无法确认收货")
+		return
+	}
+
+	now := utils.LocalTime(time.Now())
+	order.Status = models.OrderStatusCompleted
+	order.FinishAt = &now
+
+	if err := database.DB.Save(&order).Error; err != nil {
+		utils.Fail(c, "确认收货失败")
+		return
+	}
+
+	utils.Success(c, nil)
+}

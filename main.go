@@ -69,10 +69,13 @@ func main() {
 
 				appGroup.POST("/order/preview", app.PreviewOrder)
 				appGroup.POST("/order/submit", app.SubmitOrder)
-				appGroup.POST("/orders", app.CreateOrder) // 创建其他平台下单的订单
 				appGroup.GET("/orders/:id", app.GetOrderDetail)
-				appGroup.GET("/user/info", app.GetUserInfo)   // 新增
-				appGroup.GET("/orders/list", app.GetWxOrders) // 我的订单列表
+				appGroup.GET("/user/info", app.GetUserInfo)         // 新增
+				appGroup.GET("/orders/list", app.GetWxOrders)       // 我的订单列表
+				appGroup.POST("/order/pay/success", app.PaySuccess) // 支付成功
+				appGroup.POST("/order/confirm", app.ConfirmReceipt) // 确认收货
+				appGroup.POST("/order/cancel", app.CancelOrder)     // 取消订单
+				appGroup.GET("/orders/my", app.GetWxOrders)         // 订单列表
 
 				// 地址
 				appGroup.GET("/address/list", app.GetAddressList)
@@ -90,9 +93,12 @@ func main() {
 				adminGroup.POST("/upload/single", common.UploadSingleAdminImage) // 单图（新增）
 				adminGroup.POST("/upload/batch", common.UploadAdminImages)       // 批量上传(没用到)
 
-				adminGroup.GET("/orders", admin.GetOrderList)
 				adminGroup.GET("/info", admin.GetAdminInfo)
+
+				adminGroup.GET("/orders", admin.GetOrderList)
 				adminGroup.PUT("/orders/:id/status", admin.UpdateOrderStatus)
+				adminGroup.POST("/order/ship", admin.ShipOrder)              // 发货
+				adminGroup.POST("/order/complete", admin.AdminCompleteOrder) // 完成订单
 
 				adminGroup.GET("/wx-users", admin.GetWxUserList)
 				adminGroup.PUT("/wx-users/:id/status", admin.SetUserStatus)

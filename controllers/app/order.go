@@ -1,14 +1,10 @@
 package app
 
 import (
-	"fmt"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
 	"photo-print-backend/utils"
 	"strconv"
-	"time"
-
-	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -64,66 +60,6 @@ func buildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error
 		summaries = append(summaries, *v)
 	}
 	return summaries, nil
-}
-
-// CreateOrder 创建订单
-// @Summary 创建订单
-// @Description 用户下单打印照片
-// @Tags 订单
-// @Accept json
-// @Produce json
-// @Param order body CreateOrderReq true "订单信息"
-// @Success 200 {object} utils.Response{data=models.Order}
-// @Router /api/v1/orders [post]
-func CreateOrder(c *gin.Context) {
-	// 使用辅助函数获取用户ID（int64）
-	userID, ok := utils.GetUserID(c)
-	if !ok {
-		utils.Unauthorized(c, "未登录或用户ID无效")
-		return
-	}
-
-	var req CreateOrderReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.Fail(c, "参数错误: "+err.Error())
-		return
-	}
-
-	// 计算总金额
-	var total float64
-	for _, it := range req.Items {
-		total += float64(it.Quantity) * it.Price
-	}
-	orderNo := fmt.Sprintf("PO%d", time.Now().UnixNano())
-	order := models.Order{
-		OrderNo: orderNo,
-		UserID:  utils.Int64Str(userID),
-		Status:  "pending",
-	}
-	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&order).Error; err != nil {
-			return err
-		}
-		for _, it := range req.Items {
-			item := models.OrderItem{
-				OrderID:  order.ID,
-				ImageURL: it.ImageURL,
-				Spec:     it.Spec,
-				Quantity: it.Quantity,
-				Price:    it.Price,
-			}
-			if err := tx.Create(&item).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		utils.Fail(c, "创建订单失败")
-		return
-	}
-	database.DB.Preload("Items").First(&order, order.ID)
-	utils.Success(c, order)
 }
 
 // GetOrderDetail 订单详情
