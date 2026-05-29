@@ -246,18 +246,36 @@ func SubmitOrder(c *gin.Context) {
 	order := models.Order{
 		OrderNo:      orderNo,
 		UserID:       utils.Int64Str(userID),
-		Address:      fullAddress,
 		Amount:       totalAmount,
 		Freight:      freight,
 		ActualAmount: actualAmount,
 		Remark:       req.Remark,
-		Status:       "pending",
+		Status:       models.OrderStatusPending,
 	}
 
+	// 创建订单地址快照
+	orderAddress := models.OrderAddress{
+		ReceiverName: address.ReceiverName,
+		Mobile:       address.Mobile,
+		ProvinceID:   address.ProvinceID,
+		ProvinceName: utils.GetRegionName(address.ProvinceID),
+		CityID:       address.CityID,
+		CityName:     utils.GetRegionName(address.CityID),
+		DistrictID:   address.DistrictID,
+		DistrictName: utils.GetRegionName(address.DistrictID),
+		Detail:       address.Detail,
+		Doorplate:    address.Doorplate,
+	}
+	// ====================== 事务创建订单（原子性保证） ======================
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建订单
 		if err := tx.Create(&order).Error; err != nil {
 			return err
+		}
+		orderAddress.OrderID = order.ID
+		// 2. 创建订单地址快照
+		if err := tx.Create(&orderAddress).Error; err != nil {
+			utils.Fail(c, fmt.Sprintf("创建订单地址失败: %s", err.Error()))
 		}
 		// 创建订单项并扣减库存
 		for _, ch := range checks {

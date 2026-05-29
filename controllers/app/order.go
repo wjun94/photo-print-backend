@@ -98,7 +98,6 @@ func CreateOrder(c *gin.Context) {
 	order := models.Order{
 		OrderNo: orderNo,
 		UserID:  utils.Int64Str(userID),
-		Address: req.Address,
 		Status:  "pending",
 	}
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
@@ -140,7 +139,7 @@ func GetOrderDetail(c *gin.Context) {
 		return
 	}
 	var order models.Order
-	if err := database.DB.Preload("Items").First(&order, id).Error; err != nil {
+	if err := database.DB.Preload("Address").First(&order, id).Error; err != nil {
 		utils.Fail(c, "订单不存在")
 		return
 	}
@@ -151,12 +150,12 @@ func GetOrderDetail(c *gin.Context) {
 
 // 微信订单列表返回数据
 type OrderListResult struct {
-	ID           utils.Int64Str               `gorm:"primarykey;autoIncrement:false" json:"id"`
-	OrderNo      string                       `gorm:"uniqueIndex;size:32;not null" json:"orderNo"`
-	Status       string                       `gorm:"default:'pending';size:20" json:"status"`
-	ActualAmount float64                      `gorm:"type:decimal(10,2);not null" json:"actualAmount"` // 实付 = amount + freight
+	ID           utils.Int64Str               `json:"id"`
+	OrderNo      string                       `json:"orderNo"`
+	Status       string                       `json:"status"`
+	ActualAmount float64                      `json:"actualAmount"` // 实付 = amount + freight
 	CreatedAt    utils.LocalTime              `json:"createdAt"`
-	Specs        []models.SpecSummaryResponse `gorm:"-" json:"specs"`
+	Specs        []models.SpecSummaryResponse `json:"specs"`
 }
 
 // GetWxOrders 获取当前小程序用户的订单列表

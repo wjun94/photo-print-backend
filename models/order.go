@@ -6,6 +6,16 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	OrderStatusPending   = "pending"   // 待付款
+	OrderStatusPaid      = "paid"      // 已付款/待发货
+	OrderStatusShipped   = "shipped"   // 已发货
+	OrderStatusCompleted = "completed" // 已完成
+	OrderStatusCancelled = "cancelled" // 已取消
+	OrderStatusRefunding = "refunding" // 退款中
+	OrderStatusRefunded  = "refunded"  // 已退款
+)
+
 // SpecSummaryResponse 规格汇总响应（不重复）
 type SpecSummaryResponse struct {
 	ProductID     string  `json:"productId"`
@@ -22,7 +32,6 @@ type Order struct {
 	ID           utils.Int64Str        `gorm:"primarykey;autoIncrement:false" json:"id"`
 	OrderNo      string                `gorm:"uniqueIndex;size:32;not null" json:"orderNo"`
 	UserID       utils.Int64Str        `gorm:"index;not null" json:"userId"` // 指向 wx_user.id
-	Address      string                `gorm:"type:text;not null" json:"address"`
 	Status       string                `gorm:"default:'pending';size:20" json:"status"`
 	CreatedAt    utils.LocalTime       `json:"createdAt"`
 	UpdatedAt    utils.LocalTime       `json:"updatedAt"`
@@ -31,30 +40,15 @@ type Order struct {
 	Freight      float64               `gorm:"type:decimal(10,2);not null;default:0" json:"freight"` // 运费
 	ActualAmount float64               `gorm:"type:decimal(10,2);not null" json:"actualAmount"`      // 实付 = amount + freight
 	Items        []OrderItem           `gorm:"foreignKey:OrderID" json:"items,omitempty"`
-	Specs        []SpecSummaryResponse `gorm:"-" json:"specs"`
+	Specs        []SpecSummaryResponse `gorm:"-" json:"specs,omitempty"`
+	// 新增物流关联（一个订单多个包裹）
+	Logistics []Logistics  `gorm:"foreignKey:OrderID" json:"logistics,omitempty"`
+	Address   OrderAddress `gorm:"foreignKey:OrderID;references:ID" json:"address"`
 }
 
 func (o *Order) BeforeCreate(tx *gorm.DB) error {
 	if o.ID == 0 {
 		o.ID = utils.Int64Str(utils.NextID())
-	}
-	return nil
-}
-
-type OrderItem struct {
-	ID       utils.Int64Str `gorm:"primarykey;autoIncrement:false" json:"id"`
-	OrderID  utils.Int64Str `gorm:"index;not null" json:"orderId"`
-	Spec     string         `gorm:"size:50;not null" json:"spec"` // 如 "5寸", "6寸"
-	SpecID   utils.Int64Str `gorm:"index;not null" json:"specId"` // 新增：关联 product_specs.id
-	Quantity int            `gorm:"not null" json:"quantity"`
-	Price    float64        `gorm:"type:decimal(10,2);not null" json:"price"`
-	ImageURL string         `gorm:"type:text;not null" json:"imageUrl"`
-	SpecInfo ProductSpec    `gorm:"foreignKey:SpecID" json:"-"`
-}
-
-func (oi *OrderItem) BeforeCreate(tx *gorm.DB) error {
-	if oi.ID == 0 {
-		oi.ID = utils.Int64Str(utils.NextID())
 	}
 	return nil
 }

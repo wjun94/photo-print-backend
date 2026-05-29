@@ -38,6 +38,8 @@ func InitDB() {
 		&models.ProductSpec{},
 		&models.Order{},
 		&models.OrderItem{},
+		&models.OrderAddress{},
+		&models.Logistics{},
 		&models.Admin{},
 		&models.WxUser{},
 	)
