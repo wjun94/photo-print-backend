@@ -7,6 +7,7 @@ import (
 	"photo-print-backend/controllers/app"
 	"photo-print-backend/controllers/common"
 	"photo-print-backend/database"
+	"photo-print-backend/jobs"
 	"photo-print-backend/middleware"
 	"photo-print-backend/utils"
 
@@ -32,6 +33,8 @@ func main() {
 	utils.InitSnowflake(machineID)
 	utils.InitQiniu() // 新增七牛云
 	database.InitDB()
+	// 3. 在这里启动你的定时任务
+	jobs.StartAutoConfirmJob()
 
 	r := gin.Default()
 	r.Use(middleware.Cors())
