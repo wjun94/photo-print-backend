@@ -78,7 +78,6 @@ func main() {
 				appGroup.POST("/order/pay/success", app.PaySuccess) // 支付成功
 				appGroup.POST("/order/confirm", app.ConfirmReceipt) // 确认收货
 				appGroup.POST("/order/cancel", app.CancelOrder)     // 取消订单
-				appGroup.GET("/orders/my", app.GetWxOrders)         // 订单列表
 
 				// 地址
 				appGroup.GET("/address/list", app.GetAddressList)

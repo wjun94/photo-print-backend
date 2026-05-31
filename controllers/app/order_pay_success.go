@@ -13,14 +13,14 @@ import (
 // PaySuccess 模拟支付成功（实际生产应由微信异步通知调用，此处为开发测试接口）
 func PaySuccess(c *gin.Context) {
 	var req struct {
-		OrderID string `json:"orderId" binding:"required"`
+		ID string `json:"id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Fail(c, "参数错误")
 		return
 	}
 
-	orderID, err := strconv.ParseInt(req.OrderID, 10, 64)
+	orderID, err := strconv.ParseInt(req.ID, 10, 64)
 	if err != nil {
 		utils.Fail(c, "无效订单ID")
 		return

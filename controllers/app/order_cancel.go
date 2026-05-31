@@ -14,14 +14,14 @@ import (
 // CancelOrder 用户取消订单（仅限待付款或已支付未发货状态，取消后自动恢复库存）
 func CancelOrder(c *gin.Context) {
 	var req struct {
-		OrderID string `json:"orderId" binding:"required"`
+		ID string `json:"id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Fail(c, "参数错误")
 		return
 	}
 
-	orderID, err := strconv.ParseInt(req.OrderID, 10, 64)
+	orderID, err := strconv.ParseInt(req.ID, 10, 64)
 	if err != nil {
 		utils.Fail(c, "无效订单ID")
 		return
