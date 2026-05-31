@@ -129,7 +129,10 @@ func GetWxOrders(c *gin.Context) {
 
 	var result []OrderListResult
 	var total int64
-	query := database.DB.Model(&models.Order{}).Where("user_id = ?", userID).Preload("Items")
+	query := database.DB.Model(&models.Order{}).
+		Where("user_id = ?", userID).
+		Where("status != ?", models.OrderStatusCancelled). // ✅ 自动关闭的订单不显示
+		Preload("Items")
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("created_at desc").Find(&orders)
 
