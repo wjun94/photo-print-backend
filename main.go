@@ -33,8 +33,10 @@ func main() {
 	utils.InitSnowflake(machineID)
 	utils.InitQiniu() // 新增七牛云
 	database.InitDB()
-	// 3. 在这里启动你的定时任务
+	// 在这里启动你的定时任务
 	jobs.StartAutoConfirmJob()
+	// 启动订单定时任务 ✅
+	jobs.StartAutoCloseOrderJob()
 
 	r := gin.Default()
 	r.Use(middleware.Cors())
