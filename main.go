@@ -57,6 +57,7 @@ func main() {
 			// 微信小程序产品接口
 			api.GET("/products", app.GetProductListForWx)
 			api.GET("/products/:id", app.GetProductDetailForWx)
+			api.GET("/couriers", common.GetCourierList) // 获取快递列表
 		}
 
 		// 需要登录的接口（任何有效 token 均可）

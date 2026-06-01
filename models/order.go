@@ -36,10 +36,10 @@ type Order struct {
 	CreatedAt utils.LocalTime `json:"createdAt"`
 	UpdatedAt utils.LocalTime `json:"updatedAt"`
 	// 各阶段时间（指针类型可为空）
-	PayAt     *utils.LocalTime `gorm:"type:datetime" json:"payTime,omitempty"`    // 支付时间
-	FinishAt  *utils.LocalTime `gorm:"type:datetime" json:"finishTime,omitempty"` // 订单完成时间
-	ShippedAt *utils.LocalTime `gorm:"type:datetime" json:"shippedAt,omitempty"`  // 订单发货时间
-	CancelAt  *utils.LocalTime `gorm:"type:datetime" json:"cancelTime,omitempty"` // 订单取消时间
+	PayAt     *utils.LocalTime `gorm:"type:datetime" json:"payAt,omitempty"`     // 支付时间
+	FinishAt  *utils.LocalTime `gorm:"type:datetime" json:"finishAt,omitempty"`  // 订单完成时间
+	ShippedAt *utils.LocalTime `gorm:"type:datetime" json:"shippedAt,omitempty"` // 订单发货时间
+	CancelAt  *utils.LocalTime `gorm:"type:datetime" json:"cancelAt,omitempty"`  // 订单取消时间
 
 	Remark       string                `json:"remark"`                                               // 可选备注
 	Amount       float64               `gorm:"type:decimal(10,2);not null" json:"amount"`            // 商品总额
