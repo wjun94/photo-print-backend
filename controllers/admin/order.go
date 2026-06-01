@@ -48,7 +48,7 @@ func buildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error
 				Price:         it.Price, // 订单项中的价格（可能与规格当前价格不同，但以订单为准）
 				TotalQuantity: 0,
 				TotalSubtotal: 0,
-				ImageURL:      it.ImageURL,
+				ImageURL:      product.CoverImage,
 			}
 		}
 		group[specID].TotalQuantity += it.Quantity
@@ -144,6 +144,10 @@ func GetOrderDetail(c *gin.Context) {
 	if err := database.DB.Preload("Items").Preload("Address").Preload("Logistics").First(&order, id).Error; err != nil {
 		utils.Fail(c, "订单不存在")
 		return
+	}
+	summaries, err := buildOrderSpecSummaries(order.ID.Int64())
+	if err == nil {
+		order.Specs = summaries
 	}
 	utils.Success(c, order)
 }

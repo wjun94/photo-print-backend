@@ -196,9 +196,11 @@ func SubmitOrder(c *gin.Context) {
 
 	// 预检：收集所有商品规格信息，验证库存和价格
 	type itemCheck struct {
-		spec   models.ProductSpec
-		qty    int
-		amount float64
+		spec     models.ProductSpec
+		qty      int
+		amount   float64
+		imageURL string // 用户上传的图片
+
 	}
 	checks := make([]itemCheck, 0, len(req.Items))
 	var totalAmount float64
@@ -227,7 +229,7 @@ func SubmitOrder(c *gin.Context) {
 
 		subtotal := float64(it.Quantity) * spec.Price
 		totalAmount += subtotal
-		checks = append(checks, itemCheck{spec: spec, qty: it.Quantity, amount: subtotal})
+		checks = append(checks, itemCheck{spec: spec, imageURL: it.ImageURL, qty: it.Quantity, amount: subtotal})
 	}
 
 	// 生成订单号
@@ -286,7 +288,7 @@ func SubmitOrder(c *gin.Context) {
 			}
 			item := models.OrderItem{
 				OrderID:  order.ID,
-				ImageURL: ch.spec.Product.CoverImage, // 使用商品主图
+				ImageURL: ch.imageURL, // 使用商品主图
 				Spec:     ch.spec.Name,
 				SpecID:   ch.spec.ID,
 				Quantity: ch.qty,

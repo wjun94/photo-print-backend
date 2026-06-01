@@ -48,7 +48,7 @@ func buildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error
 				Price:         it.Price, // 订单项中的价格（可能与规格当前价格不同，但以订单为准）
 				TotalQuantity: 0,
 				TotalSubtotal: 0,
-				ImageURL:      it.ImageURL,
+				ImageURL:      product.CoverImage,
 			}
 		}
 		group[specID].TotalQuantity += it.Quantity
