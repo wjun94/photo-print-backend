@@ -95,7 +95,7 @@ func GetOrderList(c *gin.Context) {
 	var orders []models.Order
 	var total int64
 
-	query := database.DB.Model(&models.Order{}).Preload("Address")
+	query := database.DB.Model(&models.Order{}).Preload("Address").Preload("Logistics")
 
 	if status != "" {
 		query = query.Where("status = ?", status)
