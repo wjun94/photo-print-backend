@@ -98,6 +98,9 @@ func main() {
 				adminGroup.POST("/upload/single", common.UploadSingleAdminImage) // 单图（新增）
 				adminGroup.POST("/upload/batch", common.UploadAdminImages)       // 批量上传(没用到)
 
+				adminGroup.GET("/dashboard/overview", admin.GetOverview)
+				adminGroup.GET("/dashboard/trend", admin.GetTrend)
+
 				adminGroup.GET("/info", admin.GetAdminInfo)
 
 				adminGroup.GET("/orders", admin.GetOrderList)
