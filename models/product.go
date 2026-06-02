@@ -14,6 +14,7 @@ const (
 	ProductStatusOffSale ProductStatus = "off_sale" // 下架
 )
 
+// 商品表
 type Product struct {
 	ID           utils.Int64Str  `gorm:"primarykey;autoIncrement:false" json:"id"`
 	Name         string          `gorm:"size:200;not null" json:"name"`

@@ -3,12 +3,33 @@ package admin
 import (
 	"photo-print-backend/database"
 	"photo-print-backend/models"
-	"photo-print-backend/models/dto"
 	"photo-print-backend/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+// OverviewResponse 概览卡片数据
+type OverviewResponse struct {
+	NewUsersToday  int64             `json:"newUsersToday"`  // 今日新增用户
+	TodaySales     float64           `json:"todaySales"`     // 今日销售额
+	MonthSales     float64           `json:"monthSales"`     // 本月销售额
+	ProductRanking []ProductRankItem `json:"productRanking"` // 商品销售排行
+}
+
+type ProductRankItem struct {
+	ProductID   string  `json:"productId"`
+	ProductName string  `json:"productName"`
+	TotalSales  int     `json:"totalSales"`  // 销售数量
+	TotalAmount float64 `json:"totalAmount"` // 销售金额
+}
+
+// TrendResponse 趋势数据
+type TrendResponse struct {
+	Dates  []string  `json:"dates"`  // 日期标签
+	Orders []int64   `json:"orders"` // 订单量
+	Sales  []float64 `json:"sales"`  // 销售额
+}
 
 // GetOverview 获取概览卡片数据
 func GetOverview(c *gin.Context) {
@@ -60,9 +81,9 @@ func GetOverview(c *gin.Context) {
 		utils.Fail(c, "获取商品排行失败")
 		return
 	}
-	ranking := make([]dto.ProductRankItem, 0, len(ranks))
+	ranking := make([]ProductRankItem, 0, len(ranks))
 	for _, r := range ranks {
-		ranking = append(ranking, dto.ProductRankItem{
+		ranking = append(ranking, ProductRankItem{
 			ProductID:   r.ProductID,
 			ProductName: r.ProductName,
 			TotalSales:  r.TotalQty,
@@ -70,7 +91,7 @@ func GetOverview(c *gin.Context) {
 		})
 	}
 
-	resp := dto.OverviewResponse{
+	resp := OverviewResponse{
 		NewUsersToday:  newUsersToday,
 		TodaySales:     todaySales,
 		MonthSales:     monthSales,
@@ -79,9 +100,14 @@ func GetOverview(c *gin.Context) {
 	utils.Success(c, resp)
 }
 
+// TrendRequest 趋势请求参数
+type TrendRequest struct {
+	Type string `form:"type"` // 维度
+}
+
 // GetTrend 获取订单量/销售额趋势数据
 func GetTrend(c *gin.Context) {
-	var req dto.TrendRequest
+	var req TrendRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		utils.Fail(c, "参数错误: "+err.Error())
 		return
@@ -154,7 +180,7 @@ func GetTrend(c *gin.Context) {
 		}
 	}
 
-	resp := dto.TrendResponse{
+	resp := TrendResponse{
 		Dates:  dateLabels,
 		Orders: orderCounts,
 		Sales:  salesAmounts,

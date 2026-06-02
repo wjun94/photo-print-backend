@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 地址表
 type Address struct {
 	ID           utils.Int64Str  `gorm:"primarykey;autoIncrement:false" json:"id"`
 	UserID       utils.Int64Str  `gorm:"index;not null" json:"userId"`

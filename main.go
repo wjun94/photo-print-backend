@@ -89,6 +89,10 @@ func main() {
 				appGroup.PUT("/address/:id", app.UpdateAddress)
 				appGroup.DELETE("/address/:id", app.DeleteAddress)
 				appGroup.PUT("/address/:id/default", app.SetDefaultAddress)
+
+				appGroup.GET("/commission/total", app.GetTotalCommission)
+				appGroup.GET("/commission/list", app.GetCommissionList)
+				appGroup.GET("/commission/friends", app.GetInvitedFriends)
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）
@@ -119,6 +123,9 @@ func main() {
 				adminGroup.PUT("/products/:id", admin.UpdateProduct)
 				adminGroup.PUT("/products/:id/status", admin.UpdateProductStatus)
 				adminGroup.DELETE("/products/:id", admin.DeleteProduct)
+
+				adminGroup.POST("/commission/ratio", admin.SetCommissionRatio)
+				adminGroup.GET("/commission/ratio", admin.GetCommissionRatio)
 			}
 		}
 	}

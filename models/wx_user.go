@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// WxUser 微信小程序用户
 type WxUser struct {
 	ID        utils.Int64Str  `gorm:"primarykey" json:"id"`
 	OpenID    string          `gorm:"uniqueIndex;size:100;not null" json:"openId"`
@@ -13,7 +14,8 @@ type WxUser struct {
 	Nickname  string          `gorm:"size:50" json:"nickname"`
 	AvatarURL string          `gorm:"size:255" json:"avatarUrl"`
 	Mobile    string          `gorm:"size:20;index" json:"mobile"`
-	Status    int             `gorm:"default:1;index" json:"status"` // 1:正常 0:禁用
+	Status    int             `gorm:"default:1;index" json:"status"`    // 1:正常 0:禁用
+	InviterID utils.Int64Str  `gorm:"index;default:0" json:"inviterId"` // 上级ID（推广者），0 表示无上级
 	CreatedAt utils.LocalTime `json:"createdAt"`
 	UpdatedAt utils.LocalTime `json:"updatedAt"`
 }

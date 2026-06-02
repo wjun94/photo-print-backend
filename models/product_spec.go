@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 商品规格
 type ProductSpec struct {
 	ID        utils.Int64Str `gorm:"primarykey;autoIncrement:false" json:"id"`
 	ProductID utils.Int64Str `gorm:"index;not null" json:"productId"`

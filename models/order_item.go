@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 商品规格
+// 用户上传的照片和商品规格
 type OrderItem struct {
 	ID       utils.Int64Str `gorm:"primarykey;autoIncrement:false" json:"id"`
 	OrderID  utils.Int64Str `gorm:"index;not null" json:"orderId"`

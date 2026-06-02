@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 运费
 type FreightSetting struct {
 	ID                 utils.Int64Str `gorm:"primarykey;autoIncrement:false" json:"id"`
 	ProvinceID         string         `gorm:"index;size:10" json:"provinceId"` // 空表示全国默认

@@ -4,6 +4,7 @@ import (
 	"log"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
+	"photo-print-backend/services"
 	"photo-print-backend/utils"
 	"time"
 
@@ -52,6 +53,10 @@ func autoConfirmExpiredOrders() {
 			log.Printf("自动完成订单 %d 失败: %v", order.ID, err)
 		} else {
 			log.Printf("订单 %s（ID:%d）已自动确认收货（发货超过10天）", order.OrderNo, order.ID)
+		}
+		// ... 更新订单状态为 completed
+		if err := services.CreateCommissionForOrder(order); err != nil {
+			log.Printf("自动确认收货生成佣金失败, orderId=%d, err=%v", order.ID, err)
 		}
 	}
 }

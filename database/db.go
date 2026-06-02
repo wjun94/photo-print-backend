@@ -5,6 +5,7 @@ import (
 	"log"
 	"photo-print-backend/config"
 	"photo-print-backend/models"
+	"photo-print-backend/utils"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -42,6 +43,12 @@ func InitDB() {
 		&models.Logistics{},
 		&models.Admin{},
 		&models.WxUser{},
+		&models.CommissionSetting{
+			Ratio:     10.0,
+			UpdatedBy: "system",
+			UpdatedAt: utils.LocalTime(time.Now()),
+		},
+		&models.Commission{},
 	)
 	if err != nil {
 		log.Fatal("迁移失败: ", err)

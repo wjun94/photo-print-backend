@@ -54,6 +54,8 @@ photo-print-backend/
 ├── .air.toml               # Air 配置文件（可选）
 ├── .env.example            # 环境变量模板
 ├── config/                 # 配置加载
+├── jobs/                   # 定时任务
+├── services/               # 目录（或包）通常用于存放业务逻辑层的代码，其作用是在控制器（controllers）和数据访问层（database / models）之间提供一个清晰的隔离层。
 ├── database/               # 数据库连接 & 迁移
 ├── models/                 # 数据模型（Admin, WxUser, Photo, Order, OrderItem）
 ├── controllers/            # 业务控制器（admin_auth, wx_auth, upload, order, photo）

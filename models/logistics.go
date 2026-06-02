@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 订单快递
 type Logistics struct {
 	ID          utils.Int64Str  `gorm:"primarykey;autoIncrement:false" json:"id"`
 	OrderID     utils.Int64Str  `gorm:"index:idx_order_id;not null" json:"orderId"`               // 关联订单

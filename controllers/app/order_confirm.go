@@ -2,8 +2,10 @@ package app
 
 import (
 	"fmt"
+	"log"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
+	"photo-print-backend/services"
 	"photo-print-backend/utils"
 	"strconv"
 	"time"
@@ -346,6 +348,12 @@ func ConfirmReceipt(c *gin.Context) {
 	if err := database.DB.Save(&order).Error; err != nil {
 		utils.Fail(c, "确认收货失败")
 		return
+	}
+
+	// 在 order.Status 变为 models.OrderStatusCompleted 后
+	if err := services.CreateCommissionForOrder(order); err != nil {
+		// 记录错误日志，但不要影响主流程
+		log.Printf("生成佣金失败, orderId=%s, err=%v", order.ID.String(), err)
 	}
 
 	utils.Success(c, nil)

@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 管理员表
 type Admin struct {
 	ID        utils.Int64Str `gorm:"primarykey;autoIncrement:false" json:"id"`
 	Username  string         `gorm:"uniqueIndex;size:50;not null" json:"username"`
