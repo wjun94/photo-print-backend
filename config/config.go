@@ -30,6 +30,9 @@ type Config struct {
 	UploadPrefixProd      string // 生产环境上传目录前缀，如 "upload/"
 	UploadPrefixAdminDev  string // 开发环境上传目录前缀，如 "upload-admin-dev/"
 	UploadPrefixAdminProd string // 生产环境上传目录前缀，如 "upload-admin/"
+
+	AppId     string
+	AppSecret string
 }
 
 var AppConfig *Config
@@ -60,6 +63,8 @@ func LoadConfig() {
 	AppConfig.UploadPrefixProd = getEnv("UPLOAD_PREFIX_PROD", "upload/")
 	AppConfig.UploadPrefixAdminDev = getEnv("UPLOAD_PREFIX_ADMIN_DEV", "upload-admin-dev/")
 	AppConfig.UploadPrefixAdminProd = getEnv("UPLOAD_PREFIX_ADMIN_PROD", "upload-admin/")
+	AppConfig.AppId = getEnv("APPID", "")
+	AppConfig.AppSecret = getEnv("APPSECRET", "")
 }
 
 func getEnv(key, fallback string) string {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"photo-print-backend/config"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
 	"photo-print-backend/utils"
@@ -36,8 +37,8 @@ func WxLogin(c *gin.Context) {
 	}
 
 	// 1. 配置微信参数 (建议从配置文件读取，这里写死仅作演示)
-	appID := "wx7ce22bfac91039a9"                   // 替换为你的实际 AppID
-	appSecret := "dd79e79b9d02b6e7665f0427a7d43bea" // 替换为你的实际 AppSecret
+	appID := config.AppConfig.AppId         // 替换为你的实际 AppID
+	appSecret := config.AppConfig.AppSecret // 替换为你的实际 AppSecret
 
 	// 2. 构建微信接口请求 URL
 	// 注意：实际生产环境请使用配置管理，不要硬编码

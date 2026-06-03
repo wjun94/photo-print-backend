@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   db:
@@ -23,29 +23,11 @@ services:
     restart: always
     ports:
       - "8081:8080"
-    environment:
-      # 环境变量
-      ENV: production
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: 123456
-      DB_NAME: photoprint
-      SERVER_PORT: 8080
-      FIXED_FREIGHT: 10
-      FREE_SHIPPING_AMOUNT: 28
-      QINIU_ACCESS_KEY: gtWDWfb8YvTS0v03ukKUYnetbcUgorUNgrgbqkYV
-      QINIU_SECRET_KEY: dmaJHu9TqaYvYtd3-Qdijt7y7Qqa_z3T8LqkQqz-
-      QINIU_BUCKET: photo-print
-      # 图片访问地址
-      QINIU_DOMAIN: http://tf2fmmjt0.hd-bkt.clouddn.com
-      QINIU_ZONE: z0
-      # 小程序上传图片地址
-      UPLOAD_PREFIX_PROD: prod/upload/
-      # 后台上传图片地址
-      UPLOAD_PREFIX_ADMIN_PROD: prod/upload-admin/
+    env_file:
+      # 环境变量 config读取
+      - .env.prod
     volumes:
-      - ./uploads:/root/uploads   # 持久化照片文件
+      - ./uploads:/root/uploads # 持久化照片文件
     depends_on:
       db:
         condition: service_healthy

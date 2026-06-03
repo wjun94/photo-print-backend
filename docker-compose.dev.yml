@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   db:
@@ -9,7 +9,7 @@ services:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: photoprint
     ports:
-      - "33080:3306"   # 将数据库端口映射到宿主机，方便本地工具连接
+      - "33080:3306" # 将数据库端口映射到宿主机，方便本地工具连接
     volumes:
       - mysql_data_dev:/var/lib/mysql
     healthcheck:
@@ -24,31 +24,11 @@ services:
     container_name: photo-backend-dev
     restart: unless-stopped
     ports:
-      - "8081:8080"     # HTTP 服务端口
-      - "23450:2345"     # Delve 调试端口（如果使用 dlv 而非 air）
-    environment:
-      # 环境变量
-      ENV: development
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: 123456
-      DB_NAME: photoprint
-      SERVER_PORT: 8080
-      # 可选：设置代理加速
-      GOPROXY: https://goproxy.cn,direct
-      FIXED_FREIGHT: 10
-      FREE_SHIPPING_AMOUNT: 28
-      QINIU_ACCESS_KEY: gtWDWfb8YvTS0v03ukKUYnetbcUgorUNgrgbqkYV
-      QINIU_SECRET_KEY: dmaJHu9TqaYvYtd3-Qdijt7y7Qqa_z3T8LqkQqz-
-      QINIU_BUCKET: photo-print
-      # 图片访问地址
-      QINIU_DOMAIN: http://tf2fmmjt0.hd-bkt.clouddn.com
-      QINIU_ZONE: z0
-      # 小程序上传图片地址
-      UPLOAD_PREFIX_DEV: dev/upload/
-      # 后台上传图片地址
-      UPLOAD_PREFIX_ADMIN_DEV: dev/upload-admin/
+      - "8081:8080" # HTTP 服务端口
+      - "23450:2345" # Delve 调试端口（如果使用 dlv 而非 air）
+    env_file:
+      # 环境变量 config读取
+      - .env.dev
     volumes:
       # 挂载当前目录到容器内，实现代码热更新
       - .:/app
