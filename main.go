@@ -70,13 +70,14 @@ func main() {
 			appGroup := authorized.Group("/")
 			appGroup.Use(middleware.RequireRole("wx"))
 			{
+				appGroup.GET("/user/info", app.GetUserInfo)               // 用户惜
+				appGroup.POST("/bind", app.BindInviter)                   // 绑定上级接口
 				appGroup.POST("/upload/single", common.UploadSingleImage) // 单图（新增）
 				appGroup.POST("/upload/batch", common.UploadImages)       // 批量上传(没用到)
 
 				appGroup.POST("/order/preview", app.PreviewOrder)
 				appGroup.POST("/order/submit", app.SubmitOrder)
 				appGroup.GET("/orders/:id", app.GetOrderDetail)
-				appGroup.GET("/user/info", app.GetUserInfo)         // 新增
 				appGroup.GET("/orders/list", app.GetWxOrders)       // 我的订单列表
 				appGroup.POST("/order/pay/success", app.PaySuccess) // 支付成功
 				appGroup.POST("/order/confirm", app.ConfirmReceipt) // 确认收货
