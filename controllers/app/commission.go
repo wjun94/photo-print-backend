@@ -87,11 +87,11 @@ func GetInvitedFriends(c *gin.Context) {
 	offset := (page - 1) * size
 
 	type FriendInfo struct {
-		ID         string  `json:"id"`
-		Nickname   string  `json:"nickname"`
-		AvatarURL  string  `json:"avatarUrl"`
-		CreatedAt  string  `json:"createdAt"`
-		TotalSpent float64 `json:"totalSpent"`
+		ID         string          `json:"id"`
+		Nickname   string          `json:"nickname"`
+		AvatarURL  string          `json:"avatarUrl"`
+		CreatedAt  utils.LocalTime `json:"createdAt"`
+		TotalSpent float64         `json:"totalSpent"`
 	}
 	var friends []FriendInfo
 	err := database.DB.Table("wx_users").

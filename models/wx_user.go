@@ -9,7 +9,7 @@ import (
 // WxUser 微信用户信息模型，用于存储通过微信授权登录的用户数据
 type WxUser struct {
 	ID      utils.Int64Str `gorm:"primarykey" json:"id"`                        // 主键ID（自定义Int64字符串类型）
-	OpenID  string         `gorm:"uniqueIndex;size:100;not null" json:"openId"` // 微信用户在当前公众号/小程序的唯一标识（不同应用中不同）
+	OpenID  string         `gorm:"uniqueIndex;size:100;not null" json:"openid"` // 微信用户在当前公众号/小程序的唯一标识（不同应用中不同）
 	UnionID string         `gorm:"index;size:100" json:"unionId"`               // 【关键说明】微信开放平台用户唯一标识：
 	// 当用户关联到同一个微信开放平台账号时，该ID在所有绑定应用中保持一致
 	// 用于跨公众号/小程序/移动应用识别同一用户（需应用已绑定开放平台）

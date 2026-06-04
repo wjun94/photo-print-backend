@@ -70,6 +70,15 @@ func BindInviter(c *gin.Context) {
 		return
 	}
 
+	// --- 新增的防止互绑逻辑开始 ---
+	// 检查上级的上级是否是当前用户
+	// 如果 inviter.InviterID 是 null 或者 0，说明上级没有绑定人，直接放行
+	if inviter.InviterID != 0 && inviter.InviterID.Int64() == userID {
+		utils.Fail(c, "无法绑定下级用户为上级")
+		return
+	}
+	// --- 新增的防止互绑逻辑结束 ---
+
 	// 更新当前用户的 inviter_id
 	user.InviterID = utils.Int64Str(inviterID)
 	if err := database.DB.Save(&user).Error; err != nil {
