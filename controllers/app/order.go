@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
 	"photo-print-backend/utils"
@@ -129,10 +130,18 @@ func GetWxOrders(c *gin.Context) {
 
 	var result []OrderListResult
 	var total int64
-	query := database.DB.Model(&models.Order{}).
-		Where("user_id = ?", userID).
-		Where("status != ?", models.OrderStatusCancelled). // ✅ 自动关闭的订单不显示
-		Preload("Items")
+	query := database.DB.Model(&models.Order{}).Where("user_id = ?", userID)
+	// 增加 status 查询条件
+	statusStr := c.Query("status")
+	fmt.Println("----11111111144444")
+	fmt.Println(statusStr)
+	if statusStr != "" {
+		query = query.Where("status = ?", statusStr)
+	} else {
+		// 未传 status 时，默认排除已取消的订单
+		query = query.Where("status != ?", models.OrderStatusCancelled)
+	}
+	query.Preload("Items")
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("created_at desc").Find(&orders)
 
