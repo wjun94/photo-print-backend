@@ -26,10 +26,9 @@ type Config struct {
 	QiniuDomain    string // 存储空间绑定的域名（如 http://cdn.example.com）
 	QiniuZone      string // 区域：z0（华东）、z1（华北）、z2（华南）、na0（北美）、as0（东南亚）
 
-	UploadPrefixDev       string // 开发环境上传目录前缀，如 "upload-dev/"
-	UploadPrefixProd      string // 生产环境上传目录前缀，如 "upload/"
-	UploadPrefixAdminDev  string // 开发环境上传目录前缀，如 "upload-admin-dev/"
-	UploadPrefixAdminProd string // 生产环境上传目录前缀，如 "upload-admin/"
+	UploadPrefix       string // 开发环境上传目录前缀，如 "upload-dev/"
+	UploadPrefixAdmin  string // 开发环境上传目录前缀，如 "upload-admin-dev/"
+	UploadPrefixQrcode string // 开发环境上传目录前缀，如 "upload-admin/"
 
 	AppId     string
 	AppSecret string
@@ -59,10 +58,9 @@ func LoadConfig() {
 	AppConfig.QiniuBucket = getEnv("QINIU_BUCKET", "photo-print")
 	AppConfig.QiniuDomain = getEnv("QINIU_DOMAIN", "http://your-domain.com")
 	AppConfig.QiniuZone = getEnv("QINIU_ZONE", "z0")
-	AppConfig.UploadPrefixDev = getEnv("UPLOAD_PREFIX_DEV", "upload-dev/")
-	AppConfig.UploadPrefixProd = getEnv("UPLOAD_PREFIX_PROD", "upload/")
-	AppConfig.UploadPrefixAdminDev = getEnv("UPLOAD_PREFIX_ADMIN_DEV", "upload-admin-dev/")
-	AppConfig.UploadPrefixAdminProd = getEnv("UPLOAD_PREFIX_ADMIN_PROD", "upload-admin/")
+	AppConfig.UploadPrefix = getEnv("UPLOAD_PREFIX", "")
+	AppConfig.UploadPrefixAdmin = getEnv("UPLOAD_PREFIX_ADMIN", "")
+	AppConfig.UploadPrefixQrcode = getEnv("UPLOAD_PREFIX_QRCODE", "")
 	AppConfig.AppId = getEnv("APPID", "")
 	AppConfig.AppSecret = getEnv("APPSECRET", "")
 }

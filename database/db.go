@@ -43,6 +43,7 @@ func InitDB() {
 		&models.Logistics{},
 		&models.Admin{},
 		&models.WxUser{},
+		&models.QRCode{},
 		&models.CommissionSetting{
 			Ratio:     10.0,
 			UpdatedBy: "system",

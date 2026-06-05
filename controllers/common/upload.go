@@ -45,13 +45,9 @@ func UploadImages(c *gin.Context) {
 	}
 
 	// 确定存储前缀（开发环境 upload-dev/，生产环境 upload/）
-	env := config.AppConfig.Env // 需要在 config 中增加 Env 字段
+	// env := config.AppConfig.Env // 需要在 config 中增加 Env 字段
 	var prefix string
-	if env == "production" {
-		prefix = config.AppConfig.UploadPrefixProd
-	} else {
-		prefix = config.AppConfig.UploadPrefixDev
-	}
+	prefix = config.AppConfig.UploadPrefix
 	// 确保前缀以 / 结尾
 	if !strings.HasSuffix(prefix, "/") {
 		prefix += "/"
@@ -126,13 +122,10 @@ func UploadSingleImage(c *gin.Context) {
 	}
 
 	// 确定前缀
-	env := config.AppConfig.Env
+	// env := config.AppConfig.Env
 	var prefix string
-	if env == "production" {
-		prefix = config.AppConfig.UploadPrefixProd
-	} else {
-		prefix = config.AppConfig.UploadPrefixDev
-	}
+	prefix = config.AppConfig.UploadPrefix
+
 	if !strings.HasSuffix(prefix, "/") {
 		prefix += "/"
 	}
@@ -196,13 +189,9 @@ func UploadAdminImages(c *gin.Context) {
 		}
 
 		// 生成key和临时路径
-		env := config.AppConfig.Env // 需要在 config 中增加 Env 字段
+		// env := config.AppConfig.Env // 需要在 config 中增加 Env 字段
 		var prefix string
-		if env == "production" {
-			prefix = config.AppConfig.UploadPrefixAdminProd
-		} else {
-			prefix = config.AppConfig.UploadPrefixAdminDev
-		}
+		prefix = config.AppConfig.UploadPrefixAdmin
 		fileName := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
 		key := prefix + fileName
 		tempPath := fmt.Sprintf("/tmp/%s", fileName)
@@ -253,13 +242,10 @@ func UploadSingleAdminImage(c *gin.Context) {
 		return
 	}
 
-	env := config.AppConfig.Env // 需要在 config 中增加 Env 字段
+	// env := config.AppConfig.Env // 需要在 config 中增加 Env 字段
 	var prefix string
-	if env == "production" {
-		prefix = config.AppConfig.UploadPrefixAdminProd
-	} else {
-		prefix = config.AppConfig.UploadPrefixAdminDev
-	}
+	prefix = config.AppConfig.UploadPrefixAdmin
+
 	fileName := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
 	key := prefix + fileName
 

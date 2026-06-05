@@ -75,6 +75,8 @@ func main() {
 				appGroup.POST("/upload/single", common.UploadSingleImage) // 单图（新增）
 				appGroup.POST("/upload/batch", common.UploadImages)       // 批量上传(没用到)
 
+				appGroup.GET("/qrcodes", app.GetQRCodes)
+
 				appGroup.POST("/order/preview", app.PreviewOrder)
 				appGroup.POST("/order/submit", app.SubmitOrder)
 				appGroup.GET("/orders/:id", app.GetOrderDetail)
@@ -102,6 +104,9 @@ func main() {
 			{
 				adminGroup.POST("/upload/single", common.UploadSingleAdminImage) // 单图（新增）
 				adminGroup.POST("/upload/batch", common.UploadAdminImages)       // 批量上传(没用到)
+
+				adminGroup.POST("/qrcode/upload", admin.UploadQRCodes)
+				adminGroup.GET("/qrcodes", app.GetQRCodes)
 
 				adminGroup.GET("/dashboard/overview", admin.GetOverview)
 				adminGroup.GET("/dashboard/trend", admin.GetTrend)
