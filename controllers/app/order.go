@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
 	"photo-print-backend/utils"
@@ -133,8 +132,6 @@ func GetWxOrders(c *gin.Context) {
 	query := database.DB.Model(&models.Order{}).Where("user_id = ?", userID)
 	// 增加 status 查询条件
 	statusStr := c.Query("status")
-	fmt.Println("----11111111144444")
-	fmt.Println(statusStr)
 	if statusStr != "" {
 		query = query.Where("status = ?", statusStr)
 	} else {
