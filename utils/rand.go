@@ -41,7 +41,7 @@ func RandMixNickName(length int) string {
 	return sb.String()
 }
 
-// 生成带前缀的昵称，如 user_1234
+// 生成带前缀的昵称，如 wx1234
 func RandPrefixNickName(prefix string, numLen int) string {
-	return prefix + "_" + RandNumberNickName(numLen)
+	return prefix + RandMixNickName(numLen)
 }

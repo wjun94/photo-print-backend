@@ -37,7 +37,7 @@ func (w *WxUser) BeforeCreate(tx *gorm.DB) error {
 			shortID += 10_000_000
 		}
 		w.ID = utils.Int64Str(shortID)
-		w.Nickname = utils.RandPrefixNickName("user", 5)
+		w.Nickname = utils.RandPrefixNickName("wx", 4)
 	}
 	return nil
 }
