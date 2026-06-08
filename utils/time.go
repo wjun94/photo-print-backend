@@ -6,6 +6,18 @@ import (
 	"time"
 )
 
+// 设置全局时区为东八区（CST）
+func init() {
+	// 方式一：如果系统时区不是 CST，强制设置
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err == nil {
+		time.Local = loc
+	} else {
+		// 备用：固定偏移 +8
+		time.Local = time.FixedZone("CST", 8*3600)
+	}
+}
+
 // LocalTime 自定义时间类型，JSON 序列化为 "2006-01-02 15:04:05" 格式
 type LocalTime time.Time
 
@@ -26,7 +38,7 @@ func (t *LocalTime) UnmarshalJSON(b []byte) error {
 	}
 	// 去掉引号
 	s = s[1 : len(s)-1]
-	tt, err := time.Parse("2006-01-02 15:04:05", s)
+	tt, err := time.ParseInLocation("2006-01-02 15:04:05", s, time.Local)
 	if err != nil {
 		return err
 	}
@@ -42,6 +54,7 @@ func (t *LocalTime) Scan(value interface{}) error {
 	}
 	switch v := value.(type) {
 	case time.Time:
+		// 读取时已按数据库时区存储，无需转换
 		*t = LocalTime(v)
 	default:
 		return fmt.Errorf("unsupported type for LocalTime: %T", value)
@@ -51,7 +64,13 @@ func (t *LocalTime) Scan(value interface{}) error {
 
 // Value 实现 driver.Valuer (GORM 写入)
 func (t LocalTime) Value() (driver.Value, error) {
-	return time.Time(t), nil
+	tt := time.Time(t)
+	if tt.IsZero() {
+		return nil, nil
+	}
+	// 写入时确保转换为东八区时间
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	return tt.In(loc), nil
 }
 
 // String 返回格式化字符串
