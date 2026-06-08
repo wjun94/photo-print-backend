@@ -75,7 +75,7 @@ func GetOrderDetail(c *gin.Context) {
 		return
 	}
 	var order models.Order
-	if err := database.DB.Preload("Address").First(&order, id).Error; err != nil {
+	if err := database.DB.Preload("Address").Preload("Logistics").First(&order, id).Error; err != nil {
 		utils.Fail(c, "订单不存在")
 		return
 	}
