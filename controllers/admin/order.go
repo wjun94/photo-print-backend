@@ -3,64 +3,12 @@ package admin
 import (
 	"photo-print-backend/database"
 	"photo-print-backend/models"
+	"photo-print-backend/services"
 	"photo-print-backend/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
-
-type CreateOrderItem struct {
-	ImageURL string  `json:"imageUrl" binding:"required"`
-	Spec     string  `json:"spec" binding:"required"`
-	Quantity int     `json:"quantity" binding:"required,min=1"`
-	Price    float64 `json:"price" binding:"required,gt=0"`
-}
-
-type CreateOrderReq struct {
-	Address string            `json:"address" binding:"required"`
-	Items   []CreateOrderItem `json:"items" binding:"required,min=1"`
-}
-
-// buildOrderSpecSummaries 基于 spec 字段分组汇总
-func buildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error) {
-	var items []models.OrderItem
-	// 预加载规格和商品
-	err := database.DB.
-		Where("order_id = ?", orderID).
-		Preload("SpecInfo.Product").
-		Find(&items).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// 按 SpecID 分组汇总
-	group := make(map[int64]*models.SpecSummaryResponse)
-	for _, it := range items {
-		spec := it.SpecInfo
-		product := spec.Product
-		specID := spec.ID.Int64()
-		if _, ok := group[specID]; !ok {
-			group[specID] = &models.SpecSummaryResponse{
-				ProductID:     product.ID.String(),
-				ProductName:   product.Name,
-				SpecID:        spec.ID.String(),
-				SpecName:      spec.Name,
-				Price:         it.Price, // 订单项中的价格（可能与规格当前价格不同，但以订单为准）
-				TotalQuantity: 0,
-				TotalSubtotal: 0,
-				ImageURL:      product.CoverImage,
-			}
-		}
-		group[specID].TotalQuantity += it.Quantity
-		group[specID].TotalSubtotal += float64(it.Quantity) * it.Price
-	}
-
-	summaries := make([]models.SpecSummaryResponse, 0, len(group))
-	for _, v := range group {
-		summaries = append(summaries, *v)
-	}
-	return summaries, nil
-}
 
 // GetOrderList 订单列表 (后台)
 // @Summary 订单列表
@@ -94,7 +42,6 @@ func GetOrderList(c *gin.Context) {
 
 	var orders []models.Order
 	var total int64
-
 	query := database.DB.Model(&models.Order{}).Preload("Address").Preload("Logistics")
 
 	if status != "" {
@@ -114,7 +61,7 @@ func GetOrderList(c *gin.Context) {
 	query.Offset(offset).Limit(size).Order("created_at desc").Find(&orders)
 
 	for i := range orders {
-		summaries, err := buildOrderSpecSummaries(orders[i].ID.Int64())
+		summaries, err := services.BuildOrderSpecSummaries(orders[i].ID.Int64())
 		if err == nil {
 			orders[i].Specs = summaries
 		}
@@ -135,7 +82,7 @@ func GetOrderList(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.Order}
 // @Router /api/v1/orders/{id} [get]
 func GetOrderDetail(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		utils.Fail(c, "无效ID")
 		return
@@ -145,7 +92,7 @@ func GetOrderDetail(c *gin.Context) {
 		utils.Fail(c, "订单不存在")
 		return
 	}
-	summaries, err := buildOrderSpecSummaries(order.ID.Int64())
+	summaries, err := services.BuildOrderSpecSummaries(order.ID.Int64())
 	if err == nil {
 		order.Specs = summaries
 	}
@@ -160,7 +107,7 @@ func GetOrderDetail(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /api/v1/orders/{id}/status [put]
 func UpdateOrderStatus(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		utils.Fail(c, "无效ID")
 		return

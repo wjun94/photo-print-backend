@@ -8,24 +8,41 @@ import (
 	"photo-print-backend/services"
 	"photo-print-backend/utils"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
+// 辅助函数：获取规格显示名称（优先从 Attributes 拼接，否则使用 SkuKey）
+func getSpecDisplayName(spec models.Spec) string {
+	if len(spec.Attributes) > 0 {
+		var values []string
+		// 按照属性顺序拼接，通常前端需要顺序一致，这里简单遍历 map 顺序不定
+		// 可按需根据商品属性模板排序，此处仅演示
+		for _, v := range spec.Attributes {
+			values = append(values, v)
+		}
+		return strings.Join(values, " ")
+	}
+	return spec.SkuKey
+}
+
+// PreviewOrderItem 预览订单项
 type PreviewOrderItem struct {
 	ImageURL string `json:"imageUrl" binding:"required"`
 	Quantity int    `json:"quantity" binding:"required,min=1"`
 }
 
+// PreviewOrderReq 预览订单请求
 type PreviewOrderReq struct {
 	ProductID string             `json:"productId" binding:"required"`
 	SpecID    string             `json:"specId" binding:"required"`
 	Items     []PreviewOrderItem `json:"items" binding:"required,min=1"`
 }
 
-// PreviewOrder 确认订单页面预览（获取商品信息、默认地址）
+// PreviewItemResponse 预览项响应
 type PreviewItemResponse struct {
 	ProductID   string  `json:"productId"`
 	ProductName string  `json:"productName"`
@@ -37,6 +54,15 @@ type PreviewItemResponse struct {
 	ImageURL    string  `json:"imageUrl"`
 }
 
+// PreviewOrder 确认订单页面预览
+// @Summary 订单预览
+// @Description 根据商品、规格、数量计算总金额，并返回默认地址
+// @Tags 订单
+// @Accept json
+// @Produce json
+// @Param request body PreviewOrderReq true "预览请求"
+// @Success 200 {object} utils.Response{data=object{items=[]PreviewItemResponse,specs=[]models.SpecSummaryResponse,totalAmount=float64,freight=float64,actualAmount=float64,defaultAddress=object}}
+// @Router /api/v1/wx/order/preview [post]
 func PreviewOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -70,7 +96,7 @@ func PreviewOrder(c *gin.Context) {
 		}
 
 		// 查询规格（预加载商品）
-		var spec models.ProductSpec
+		var spec models.Spec
 		if err := database.DB.Preload("Product").First(&spec, specID).Error; err != nil {
 			utils.Fail(c, "规格不存在: "+req.SpecID)
 			return
@@ -85,7 +111,7 @@ func PreviewOrder(c *gin.Context) {
 			return
 		}
 		if spec.Stock < it.Quantity {
-			utils.Fail(c, "规格["+spec.Name+"]库存不足")
+			utils.Fail(c, "规格库存不足")
 			return
 		}
 
@@ -97,26 +123,24 @@ func PreviewOrder(c *gin.Context) {
 			ProductID:   product.ID.String(),
 			ProductName: product.Name,
 			SpecID:      spec.ID.String(),
-			SpecName:    spec.Name,
+			SpecName:    getSpecDisplayName(spec),
 			Price:       spec.Price,
 			Quantity:    it.Quantity,
 			Subtotal:    subtotal,
-			ImageURL:    it.ImageURL, // 注意：这里修正为使用item的图片URL，而不是商品封面
+			ImageURL:    it.ImageURL,
 		})
 
 		// 更新规格汇总
 		specIDStr := spec.ID.String()
 		if summary, exists := specSummaryMap[specIDStr]; exists {
-			// 规格已存在，累加数量和小计
 			summary.TotalQuantity += it.Quantity
 			summary.TotalSubtotal += subtotal
 		} else {
-			// 规格不存在，新建汇总条目
 			specSummaryMap[specIDStr] = &models.SpecSummaryResponse{
 				ProductID:     product.ID.String(),
 				ProductName:   product.Name,
 				SpecID:        specIDStr,
-				SpecName:      spec.Name,
+				SpecName:      getSpecDisplayName(spec),
 				Price:         spec.Price,
 				TotalQuantity: it.Quantity,
 				TotalSubtotal: subtotal,
@@ -136,24 +160,35 @@ func PreviewOrder(c *gin.Context) {
 	addrErr := database.DB.Where("user_id = ? AND is_default = ?", userID, true).First(&defaultAddress).Error
 	var addressResp interface{}
 	if addrErr == nil {
-		// 填充名称（如需）
-		addressResp = AddressListResponse{
-			Address:      defaultAddress,
+		addressResp = struct {
+			ID           string `json:"id"`
+			ReceiverName string `json:"receiverName"`
+			Mobile       string `json:"mobile"`
+			ProvinceName string `json:"provinceName"`
+			CityName     string `json:"cityName"`
+			DistrictName string `json:"districtName"`
+			Detail       string `json:"detail"`
+			Doorplate    string `json:"doorplate"`
+		}{
+			ID:           defaultAddress.ID.String(),
+			ReceiverName: defaultAddress.ReceiverName,
+			Mobile:       defaultAddress.Mobile,
 			ProvinceName: utils.GetRegionName(defaultAddress.ProvinceID),
 			CityName:     utils.GetRegionName(defaultAddress.CityID),
 			DistrictName: utils.GetRegionName(defaultAddress.DistrictID),
+			Detail:       defaultAddress.Detail,
+			Doorplate:    defaultAddress.Doorplate,
 		}
 	} else {
 		addressResp = nil
 	}
 
-	// 在计算 totalAmount 之后
 	freight := utils.CalculateFreight(totalAmount)
 	actualAmount := totalAmount + freight
 
 	utils.Success(c, gin.H{
 		"items":          previewItems,
-		"specs":          specSummaries, // 新增：不重复的规格汇总数组
+		"specs":          specSummaries,
 		"totalAmount":    totalAmount,
 		"freight":        freight,
 		"actualAmount":   actualAmount,
@@ -161,16 +196,24 @@ func PreviewOrder(c *gin.Context) {
 	})
 }
 
-// 提交订单请求
+// SubmitOrderReq 提交订单请求
 type SubmitOrderReq struct {
 	AddressId string             `json:"addressId" binding:"required"`
 	ProductID string             `json:"productId" binding:"required"`
 	SpecID    string             `json:"specId" binding:"required"`
 	Items     []PreviewOrderItem `json:"items" binding:"required,min=1"`
-	Remark    string             `json:"remark"` // 可选备注
+	Remark    string             `json:"remark"`
 }
 
 // SubmitOrder 立即购买提交订单
+// @Summary 提交订单
+// @Description 立即购买，创建订单并扣减库存
+// @Tags 订单
+// @Accept json
+// @Produce json
+// @Param request body SubmitOrderReq true "订单信息"
+// @Success 200 {object} utils.Response{data=object{orderId=string}}
+// @Router /api/v1/wx/order/submit [post]
 func SubmitOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -198,11 +241,10 @@ func SubmitOrder(c *gin.Context) {
 
 	// 预检：收集所有商品规格信息，验证库存和价格
 	type itemCheck struct {
-		spec     models.ProductSpec
+		spec     models.Spec
 		qty      int
 		amount   float64
-		imageURL string // 用户上传的图片
-
+		imageURL string
 	}
 	checks := make([]itemCheck, 0, len(req.Items))
 	var totalAmount float64
@@ -211,7 +253,7 @@ func SubmitOrder(c *gin.Context) {
 		productID, _ := strconv.ParseInt(req.ProductID, 10, 64)
 		specID, _ := strconv.ParseInt(req.SpecID, 10, 64)
 
-		var spec models.ProductSpec
+		var spec models.Spec
 		if err := database.DB.Preload("Product").First(&spec, specID).Error; err != nil {
 			utils.Fail(c, "规格不存在: "+req.SpecID)
 			return
@@ -225,25 +267,29 @@ func SubmitOrder(c *gin.Context) {
 			return
 		}
 		if spec.Stock < it.Quantity {
-			utils.Fail(c, "规格["+spec.Name+"]库存不足，当前库存: "+strconv.Itoa(spec.Stock))
+			utils.Fail(c, "规格库存不足，当前库存: "+strconv.Itoa(spec.Stock))
 			return
 		}
 
 		subtotal := float64(it.Quantity) * spec.Price
 		totalAmount += subtotal
-		checks = append(checks, itemCheck{spec: spec, imageURL: it.ImageURL, qty: it.Quantity, amount: subtotal})
+		checks = append(checks, itemCheck{
+			spec:     spec,
+			qty:      it.Quantity,
+			amount:   subtotal,
+			imageURL: it.ImageURL,
+		})
 	}
 
 	// 生成订单号
 	orderNo := fmt.Sprintf("PO%d", time.Now().UnixNano())
 
-	// 组装地址字符串（可根据需要拼接省市区）
+	// 组装地址字符串
 	fullAddress := address.Detail
 	if address.Doorplate != "" {
 		fullAddress += " " + address.Doorplate
 	}
 
-	// 计算运费和实付
 	freight := utils.CalculateFreight(totalAmount)
 	actualAmount := totalAmount + freight
 
@@ -257,7 +303,7 @@ func SubmitOrder(c *gin.Context) {
 		Status:       models.OrderStatusPending,
 	}
 
-	// 创建订单地址快照
+	// 订单地址快照
 	orderAddress := models.OrderAddress{
 		ReceiverName: address.ReceiverName,
 		Mobile:       address.Mobile,
@@ -270,28 +316,25 @@ func SubmitOrder(c *gin.Context) {
 		Detail:       address.Detail,
 		Doorplate:    address.Doorplate,
 	}
-	// ====================== 事务创建订单（原子性保证） ======================
+
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		// 创建订单
 		if err := tx.Create(&order).Error; err != nil {
 			return err
 		}
 		orderAddress.OrderID = order.ID
-		// 2. 创建订单地址快照
 		if err := tx.Create(&orderAddress).Error; err != nil {
-			utils.Fail(c, fmt.Sprintf("创建订单地址失败: %s", err.Error()))
+			return err
 		}
-		// 创建订单项并扣减库存
 		for _, ch := range checks {
-			// 扣减库存（原子操作）
+			// 扣减库存
 			newStock := ch.spec.Stock - ch.qty
 			if err := tx.Model(&ch.spec).Update("stock", newStock).Error; err != nil {
 				return err
 			}
 			item := models.OrderItem{
 				OrderID:  order.ID,
-				ImageURL: ch.imageURL, // 使用商品主图
-				Spec:     ch.spec.Name,
+				ImageURL: ch.imageURL,
+				Spec:     getSpecDisplayName(ch.spec),
 				SpecID:   ch.spec.ID,
 				Quantity: ch.qty,
 				Price:    ch.spec.Price,
@@ -314,6 +357,14 @@ func SubmitOrder(c *gin.Context) {
 }
 
 // ConfirmReceipt 用户确认收货
+// @Summary 确认收货
+// @Description 用户确认收货后订单状态变为已完成，并生成佣金
+// @Tags 订单
+// @Accept json
+// @Produce json
+// @Param request body object{orderId=string} true "订单ID"
+// @Success 200 {object} utils.Response
+// @Router /api/v1/wx/order/confirm [post]
 func ConfirmReceipt(c *gin.Context) {
 	var req struct {
 		OrderID string `json:"orderId" binding:"required"`
@@ -335,7 +386,6 @@ func ConfirmReceipt(c *gin.Context) {
 		return
 	}
 
-	// 只有已发货的订单才能确认收货
 	if order.Status != models.OrderStatusShipped {
 		utils.Fail(c, "订单未发货，无法确认收货")
 		return
@@ -350,9 +400,8 @@ func ConfirmReceipt(c *gin.Context) {
 		return
 	}
 
-	// 在 order.Status 变为 models.OrderStatusCompleted 后
+	// 生成佣金
 	if err := services.CreateCommissionForOrder(order); err != nil {
-		// 记录错误日志，但不要影响主流程
 		log.Printf("生成佣金失败, orderId=%s, err=%v", order.ID.String(), err)
 	}
 

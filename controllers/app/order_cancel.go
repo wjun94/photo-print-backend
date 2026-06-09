@@ -50,7 +50,7 @@ func CancelOrder(c *gin.Context) {
 
 		// 恢复库存（需要 OrderItem 中存储了 SpecID）
 		for _, item := range order.Items {
-			if err := tx.Model(&models.ProductSpec{}).
+			if err := tx.Model(&models.Spec{}).
 				Where("id = ?", item.SpecID).
 				Update("stock", gorm.Expr("stock + ?", item.Quantity)).Error; err != nil {
 				return err

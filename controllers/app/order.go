@@ -3,6 +3,7 @@ package app
 import (
 	"photo-print-backend/database"
 	"photo-print-backend/models"
+	"photo-print-backend/services"
 	"photo-print-backend/utils"
 	"strconv"
 
@@ -19,47 +20,6 @@ type CreateOrderItem struct {
 type CreateOrderReq struct {
 	Address string            `json:"address" binding:"required"`
 	Items   []CreateOrderItem `json:"items" binding:"required,min=1"`
-}
-
-// buildOrderSpecSummaries 基于 spec 字段分组汇总
-func buildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error) {
-	var items []models.OrderItem
-	// 预加载规格和商品
-	err := database.DB.
-		Where("order_id = ?", orderID).
-		Preload("SpecInfo.Product").
-		Find(&items).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// 按 SpecID 分组汇总
-	group := make(map[int64]*models.SpecSummaryResponse)
-	for _, it := range items {
-		spec := it.SpecInfo
-		product := spec.Product
-		specID := spec.ID.Int64()
-		if _, ok := group[specID]; !ok {
-			group[specID] = &models.SpecSummaryResponse{
-				ProductID:     product.ID.String(),
-				ProductName:   product.Name,
-				SpecID:        spec.ID.String(),
-				SpecName:      spec.Name,
-				Price:         it.Price, // 订单项中的价格（可能与规格当前价格不同，但以订单为准）
-				TotalQuantity: 0,
-				TotalSubtotal: 0,
-				ImageURL:      product.CoverImage,
-			}
-		}
-		group[specID].TotalQuantity += it.Quantity
-		group[specID].TotalSubtotal += float64(it.Quantity) * it.Price
-	}
-
-	summaries := make([]models.SpecSummaryResponse, 0, len(group))
-	for _, v := range group {
-		summaries = append(summaries, *v)
-	}
-	return summaries, nil
 }
 
 // GetOrderDetail 订单详情
@@ -79,7 +39,7 @@ func GetOrderDetail(c *gin.Context) {
 		utils.Fail(c, "订单不存在")
 		return
 	}
-	summaries, _ := buildOrderSpecSummaries(order.ID.Int64())
+	summaries, _ := services.BuildOrderSpecSummaries(order.ID.Int64())
 	order.Specs = summaries
 	utils.Success(c, order)
 }
@@ -144,7 +104,7 @@ func GetWxOrders(c *gin.Context) {
 
 	// 为每个订单构建 SpecSummaries
 	for i := range orders {
-		summaries, err := buildOrderSpecSummaries(orders[i].ID.Int64())
+		summaries, err := services.BuildOrderSpecSummaries(orders[i].ID.Int64())
 		item := OrderListResult{
 			ID:        orders[i].ID,
 			OrderNo:   orders[i].OrderNo,

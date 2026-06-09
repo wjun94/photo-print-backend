@@ -15,7 +15,7 @@ type OrderItem struct {
 	Quantity int            `gorm:"not null" json:"quantity"`
 	Price    float64        `gorm:"type:decimal(10,2);not null" json:"price"`
 	ImageURL string         `gorm:"type:text;not null" json:"imageUrl"`
-	SpecInfo ProductSpec    `gorm:"foreignKey:SpecID" json:"-"`
+	SpecInfo Spec           `gorm:"foreignKey:SpecID" json:"-"`
 }
 
 func (oi *OrderItem) BeforeCreate(tx *gorm.DB) error {

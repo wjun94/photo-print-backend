@@ -126,9 +126,9 @@ func main() {
 
 				// 商品管理
 				adminGroup.POST("/products", admin.CreateProduct)
+				adminGroup.PUT("/products/:id", admin.UpdateProduct)
 				adminGroup.GET("/products", admin.GetProductList)
 				adminGroup.GET("/products/:id", admin.GetProductDetail)
-				adminGroup.PUT("/products/:id", admin.UpdateProduct)
 				adminGroup.PUT("/products/:id/status", admin.UpdateProductStatus)
 				adminGroup.DELETE("/products/:id", admin.DeleteProduct)
 
