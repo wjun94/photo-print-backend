@@ -75,6 +75,7 @@ type CreateProductReq struct {
 	Detail         string               `json:"detail"`
 	Status         models.ProductStatus `json:"status" binding:"oneof=draft on_sale off_sale"`
 	SortOrder      int                  `json:"sortOrder"`
+	Action         models.ProductAction `json:"action" binding:"oneof=confirm upload"`
 	SpecAttributes []SpecAttributeReq   `json:"specAttributes"`
 	Specs          []SpecReq            `json:"specs" binding:"required,min=1"`
 }
@@ -104,6 +105,7 @@ func CreateProduct(c *gin.Context) {
 		Detail:       req.Detail,
 		Status:       req.Status,
 		SortOrder:    req.SortOrder,
+		Action:       req.Action,
 		CreatedAt:    utils.LocalTime(time.Now()),
 		UpdatedAt:    utils.LocalTime(time.Now()),
 	}
@@ -173,8 +175,9 @@ type UpdateProductReq struct {
 	Detail         *string               `json:"detail"`
 	Status         *models.ProductStatus `json:"status" binding:"omitempty,oneof=draft on_sale off_sale"`
 	SortOrder      *int                  `json:"sortOrder"`
-	SpecAttributes *[]SpecAttributeReq   `json:"specAttributes"` // 全量替换规格属性
-	Specs          *[]SpecReq            `json:"specs"`          // 全量替换 SKU
+	Action         *models.ProductAction `json:"action" binding:"omitempty,oneof=confirm upload"` // 新增
+	SpecAttributes *[]SpecAttributeReq   `json:"specAttributes"`                                  // 全量替换规格属性
+	Specs          *[]SpecReq            `json:"specs"`                                           // 全量替换 SKU
 }
 
 // UpdateProduct 更新商品（支持全量替换规格属性和 SKU）
@@ -229,6 +232,9 @@ func UpdateProduct(c *gin.Context) {
 	}
 	if req.SortOrder != nil {
 		updates["sort_order"] = *req.SortOrder
+	}
+	if req.Action != nil {
+		updates["action"] = *req.Action
 	}
 	if len(updates) > 0 {
 		updates["updated_at"] = utils.LocalTime(time.Now())
