@@ -136,7 +136,7 @@ func CreateProduct(c *gin.Context) {
 				for k, v := range s.Attributes {
 					parts = append(parts, fmt.Sprintf("%s:%s", k, v))
 				}
-				skuKey = strings.Join(parts, ",")
+				skuKey = strings.Join(parts, "_")
 			}
 			spec := models.Spec{
 				ProductID:  product.ID,
@@ -270,7 +270,7 @@ func UpdateProduct(c *gin.Context) {
 					for k, v := range s.Attributes {
 						parts = append(parts, fmt.Sprintf("%s:%s", k, v))
 					}
-					skuKey = strings.Join(parts, ",")
+					skuKey = strings.Join(parts, "_")
 				}
 				spec := models.Spec{
 					ProductID:  product.ID,
