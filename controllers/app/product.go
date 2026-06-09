@@ -10,15 +10,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ProductListItem 小程序商品列表项（精简字段）
 type ProductListItem struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	CoverImage  string `json:"coverImage"`
-	Price       string `json:"price"` // 格式化后的价格文本
-	PriceSuffix string `json:"priceSuffix"`
+	Price       string `json:"price"`       // 格式化后的最低价文本，如 "19.99"
+	PriceSuffix string `json:"priceSuffix"` // 价格后缀，如 "起" 或空
 }
 
-// GetProductListForWx 小程序商品列表（仅上架商品，精简字段）
+// GetProductListForWx 小程序商品列表（仅上架商品）
+// @Summary      小程序商品列表
+// @Description  获取已上架的商品列表，按排序序号正序、创建时间倒序排列，返回最低价及跳转动作
+// @Tags         小程序-商品
+// @Accept       json
+// @Produce      json
+// @Param        page  query   int     false  "页码，默认1"
+// @Param        size  query   int     false  "每页数量，默认10，最大20"
+// @Success      200   {object} utils.Response{data=object{list=[]ProductListItem,total=int64,page=int,size=int}}
+// @Router       /api/v1/wx/products [get]
 func GetProductListForWx(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
@@ -44,18 +54,17 @@ func GetProductListForWx(c *gin.Context) {
 	list := make([]ProductListItem, 0, len(products))
 	for _, p := range products {
 		if len(p.Specs) == 0 {
-			// 无规格的商品，价格显示 0 或自定义
 			list = append(list, ProductListItem{
 				ID:          p.ID.String(),
 				Name:        p.Name,
 				CoverImage:  p.CoverImage,
-				Price:       "0",
+				Price:       "0.00",
 				PriceSuffix: "",
 			})
 			continue
 		}
 
-		// 计算最低价和价格集合
+		// 计算最低价及价格集合
 		minPrice := p.Specs[0].Price
 		priceSet := make(map[float64]struct{})
 		priceSet[minPrice] = struct{}{}
@@ -69,11 +78,9 @@ func GetProductListForWx(c *gin.Context) {
 		var price string
 		var priceSuffix string
 		if len(priceSet) == 1 {
-			// 所有规格价格相同
 			price = fmt.Sprintf("%.2f", minPrice)
 			priceSuffix = ""
 		} else {
-			// 存在不同价格
 			price = fmt.Sprintf("%.2f", minPrice)
 			priceSuffix = "起"
 		}
@@ -96,6 +103,16 @@ func GetProductListForWx(c *gin.Context) {
 }
 
 // GetProductDetailForWx 小程序商品详情
+// @Summary      小程序商品详情
+// @Description  根据商品ID获取详情，包含所有规格、轮播图、描述、跳转动作（confirm/upload）等
+// @Tags         小程序-商品
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "商品ID"
+// @Success      200  {object}  utils.Response{data=models.Product}
+// @Failure      400  {object}  utils.Response
+// @Failure      404  {object}  utils.Response
+// @Router       /api/v1/wx/products/{id} [get]
 func GetProductDetailForWx(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -104,9 +121,14 @@ func GetProductDetailForWx(c *gin.Context) {
 		return
 	}
 	var product models.Product
-	if err := database.DB.Where("status = ?", models.ProductStatusOnSale).Preload("Specs").First(&product, id).Error; err != nil {
+	if err := database.DB.
+		Where("status = ?", models.ProductStatusOnSale).
+		Preload("Specs").
+		Preload("SpecAttributes").
+		First(&product, id).Error; err != nil {
 		utils.Fail(c, "商品不存在或已下架")
 		return
 	}
+	// 直接返回完整商品对象，其中包含 Action 字段
 	utils.Success(c, product)
 }
