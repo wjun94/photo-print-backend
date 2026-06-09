@@ -37,6 +37,8 @@ func main() {
 	jobs.StartAutoConfirmJob()
 	// 启动订单定时任务 ✅
 	jobs.StartAutoCloseOrderJob()
+	// 启动删除已取消订单
+	jobs.StartDeleteCancelledOrdersJob()
 
 	r := gin.Default()
 	r.Use(middleware.Cors())
