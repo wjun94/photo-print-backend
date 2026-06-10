@@ -88,10 +88,21 @@ func GetOrderDetail(c *gin.Context) {
 		return
 	}
 	var order models.Order
-	if err := database.DB.Preload("Items").Preload("Address").Preload("Logistics").First(&order, id).Error; err != nil {
+	if err := database.DB.Preload("Items.SpecInfo.Product").Preload("Address").Preload("Logistics").First(&order, id).Error; err != nil {
 		utils.Fail(c, "订单不存在")
 		return
 	}
+
+	// 过滤订单项：只保留商品 action 为 upload 的项
+	filteredItems := make([]models.OrderItem, 0)
+	for _, item := range order.Items {
+		if item.SpecInfo.Product.Action == models.ProductActionUpload {
+			filteredItems = append(filteredItems, item)
+		}
+	}
+	order.Items = filteredItems
+
+	// 生成规格汇总（该函数内部已只汇总 upload 商品，无需改动）
 	summaries, err := services.BuildOrderSpecSummaries(order.ID.Int64())
 	if err == nil {
 		order.Specs = summaries

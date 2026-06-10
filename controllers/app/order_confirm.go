@@ -8,30 +8,15 @@ import (
 	"photo-print-backend/services"
 	"photo-print-backend/utils"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// 辅助函数：获取规格显示名称（优先从 Attributes 拼接，否则使用 SkuKey）
-func getSpecDisplayName(spec models.Spec) string {
-	if len(spec.Attributes) > 0 {
-		var values []string
-		// 按照属性顺序拼接，通常前端需要顺序一致，这里简单遍历 map 顺序不定
-		// 可按需根据商品属性模板排序，此处仅演示
-		for _, v := range spec.Attributes {
-			values = append(values, v)
-		}
-		return strings.Join(values, " ")
-	}
-	return spec.SkuKey
-}
-
 // PreviewOrderItem 预览订单项
 type PreviewOrderItem struct {
-	ImageURL string `json:"imageUrl" binding:"required"`
+	ImageURL string `json:"imageUrl"` // 不设置 binding，手动校验
 	Quantity int    `json:"quantity" binding:"required,min=1"`
 }
 
@@ -78,8 +63,6 @@ func PreviewOrder(c *gin.Context) {
 
 	var previewItems []PreviewItemResponse
 	var totalAmount float64
-
-	// 用于统计规格汇总的map，key为specID字符串
 	specSummaryMap := make(map[string]*models.SpecSummaryResponse)
 
 	// 逐个验证商品规格
@@ -115,19 +98,32 @@ func PreviewOrder(c *gin.Context) {
 			return
 		}
 
+		// 根据商品 Action 处理图片
+		imageURL := it.ImageURL
+		if product.Action == models.ProductActionUpload {
+			if imageURL == "" {
+				utils.Fail(c, "该商品需要上传图片，请提供图片URL")
+				return
+			}
+		} else { // confirm
+			if imageURL == "" {
+				imageURL = product.CoverImage // 使用商品封面图
+			}
+		}
+
 		subtotal := float64(it.Quantity) * spec.Price
 		totalAmount += subtotal
 
-		// 添加到单个图片项列表
+		// 添加到预览项
 		previewItems = append(previewItems, PreviewItemResponse{
 			ProductID:   product.ID.String(),
 			ProductName: product.Name,
 			SpecID:      spec.ID.String(),
-			SpecName:    getSpecDisplayName(spec),
+			SpecName:    services.GetSpecDisplayName(spec),
 			Price:       spec.Price,
 			Quantity:    it.Quantity,
 			Subtotal:    subtotal,
-			ImageURL:    it.ImageURL,
+			ImageURL:    imageURL,
 		})
 
 		// 更新规格汇总
@@ -140,11 +136,11 @@ func PreviewOrder(c *gin.Context) {
 				ProductID:     product.ID.String(),
 				ProductName:   product.Name,
 				SpecID:        specIDStr,
-				SpecName:      getSpecDisplayName(spec),
+				SpecName:      services.GetSpecDisplayName(spec),
 				Price:         spec.Price,
 				TotalQuantity: it.Quantity,
 				TotalSubtotal: subtotal,
-				ImageURL:      it.ImageURL,
+				ImageURL:      imageURL,
 			}
 		}
 	}
@@ -334,7 +330,7 @@ func SubmitOrder(c *gin.Context) {
 			item := models.OrderItem{
 				OrderID:  order.ID,
 				ImageURL: ch.imageURL,
-				Spec:     getSpecDisplayName(ch.spec),
+				Spec:     services.GetSpecDisplayName(ch.spec),
 				SpecID:   ch.spec.ID,
 				Quantity: ch.qty,
 				Price:    ch.spec.Price,
