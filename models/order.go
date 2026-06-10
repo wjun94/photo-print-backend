@@ -47,6 +47,10 @@ type Order struct {
 	ActualAmount float64               `gorm:"type:decimal(10,2);not null" json:"actualAmount"`      // 实付 = amount + freight
 	Items        []OrderItem           `gorm:"foreignKey:OrderID" json:"items,omitempty"`
 	Specs        []SpecSummaryResponse `gorm:"-" json:"specs,omitempty"`
+
+	CouponID       utils.Int64Str `gorm:"index" json:"couponId,omitempty"`
+	DiscountAmount float64        `gorm:"type:decimal(10,2);default:0" json:"discountAmount"`
+
 	// 新增物流关联（一个订单多个包裹）
 	Logistics []Logistics  `gorm:"foreignKey:OrderID" json:"logistics,omitempty"`
 	Address   OrderAddress `gorm:"foreignKey:OrderID;references:ID" json:"address"`

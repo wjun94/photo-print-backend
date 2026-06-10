@@ -14,20 +14,18 @@ import (
 	"gorm.io/gorm"
 )
 
-// PreviewOrderItem 预览订单项
 type PreviewOrderItem struct {
-	ImageURL string `json:"imageUrl"` // 不设置 binding，手动校验
+	ImageURL string `json:"imageUrl"`
 	Quantity int    `json:"quantity" binding:"required,min=1"`
 }
 
-// PreviewOrderReq 预览订单请求
 type PreviewOrderReq struct {
 	ProductID string             `json:"productId" binding:"required"`
 	SpecID    string             `json:"specId" binding:"required"`
 	Items     []PreviewOrderItem `json:"items" binding:"required,min=1"`
+	CouponID  string             `json:"couponId"` // 新增：优惠券ID（可选）
 }
 
-// PreviewItemResponse 预览项响应
 type PreviewItemResponse struct {
 	ProductID   string  `json:"productId"`
 	ProductName string  `json:"productName"`
@@ -39,15 +37,7 @@ type PreviewItemResponse struct {
 	ImageURL    string  `json:"imageUrl"`
 }
 
-// PreviewOrder 确认订单页面预览
-// @Summary 订单预览
-// @Description 根据商品、规格、数量计算总金额，并返回默认地址
-// @Tags 订单
-// @Accept json
-// @Produce json
-// @Param request body PreviewOrderReq true "预览请求"
-// @Success 200 {object} utils.Response{data=object{items=[]PreviewItemResponse,specs=[]models.SpecSummaryResponse,totalAmount=float64,freight=float64,actualAmount=float64,defaultAddress=object}}
-// @Router /api/v1/wx/order/preview [post]
+// PreviewOrder 确认订单页面预览（支持优惠券）
 func PreviewOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -65,7 +55,7 @@ func PreviewOrder(c *gin.Context) {
 	var totalAmount float64
 	specSummaryMap := make(map[string]*models.SpecSummaryResponse)
 
-	// 逐个验证商品规格
+	// 验证商品规格（与原逻辑相同）
 	for _, it := range req.Items {
 		productID, err := strconv.ParseInt(req.ProductID, 10, 64)
 		if err != nil {
@@ -78,7 +68,6 @@ func PreviewOrder(c *gin.Context) {
 			return
 		}
 
-		// 查询规格（预加载商品）
 		var spec models.Spec
 		if err := database.DB.Preload("Product").First(&spec, specID).Error; err != nil {
 			utils.Fail(c, "规格不存在: "+req.SpecID)
@@ -98,23 +87,21 @@ func PreviewOrder(c *gin.Context) {
 			return
 		}
 
-		// 根据商品 Action 处理图片
 		imageURL := it.ImageURL
 		if product.Action == models.ProductActionUpload {
 			if imageURL == "" {
 				utils.Fail(c, "该商品需要上传图片，请提供图片URL")
 				return
 			}
-		} else { // confirm
+		} else {
 			if imageURL == "" {
-				imageURL = product.CoverImage // 使用商品封面图
+				imageURL = product.CoverImage
 			}
 		}
 
 		subtotal := float64(it.Quantity) * spec.Price
 		totalAmount += subtotal
 
-		// 添加到预览项
 		previewItems = append(previewItems, PreviewItemResponse{
 			ProductID:   product.ID.String(),
 			ProductName: product.Name,
@@ -126,7 +113,6 @@ func PreviewOrder(c *gin.Context) {
 			ImageURL:    imageURL,
 		})
 
-		// 更新规格汇总
 		specIDStr := spec.ID.String()
 		if summary, exists := specSummaryMap[specIDStr]; exists {
 			summary.TotalQuantity += it.Quantity
@@ -145,13 +131,12 @@ func PreviewOrder(c *gin.Context) {
 		}
 	}
 
-	// 将map转换为数组
 	var specSummaries []models.SpecSummaryResponse
 	for _, summary := range specSummaryMap {
 		specSummaries = append(specSummaries, *summary)
 	}
 
-	// 获取用户默认地址
+	// 获取默认地址
 	var defaultAddress models.Address
 	addrErr := database.DB.Where("user_id = ? AND is_default = ?", userID, true).First(&defaultAddress).Error
 	var addressResp interface{}
@@ -181,35 +166,49 @@ func PreviewOrder(c *gin.Context) {
 
 	freight := utils.CalculateFreight(totalAmount)
 	actualAmount := totalAmount + freight
+	discountAmount := 0.0
+
+	// 优惠券处理（预览）
+	if req.CouponID != "" {
+		couponID, err := strconv.ParseInt(req.CouponID, 10, 64)
+		if err == nil {
+			discount, _, err := services.ValidateCoupon(couponID, userID, totalAmount+freight)
+			if err == nil {
+				discountAmount = discount
+				actualAmount = totalAmount + freight - discount
+				if actualAmount < 0 {
+					actualAmount = 0
+				}
+			} else {
+				// 优惠券无效，返回错误信息（可根据需求决定是否阻断）
+				utils.Fail(c, err.Error())
+				return
+			}
+		}
+	}
 
 	utils.Success(c, gin.H{
 		"items":          previewItems,
 		"specs":          specSummaries,
 		"totalAmount":    totalAmount,
 		"freight":        freight,
+		"discountAmount": discountAmount,
 		"actualAmount":   actualAmount,
 		"defaultAddress": addressResp,
 	})
 }
 
-// SubmitOrderReq 提交订单请求
+// SubmitOrderReq 提交订单请求（增加优惠券ID）
 type SubmitOrderReq struct {
 	AddressId string             `json:"addressId" binding:"required"`
 	ProductID string             `json:"productId" binding:"required"`
 	SpecID    string             `json:"specId" binding:"required"`
 	Items     []PreviewOrderItem `json:"items" binding:"required,min=1"`
 	Remark    string             `json:"remark"`
+	CouponID  string             `json:"couponId"`
 }
 
-// SubmitOrder 立即购买提交订单
-// @Summary 提交订单
-// @Description 立即购买，创建订单并扣减库存
-// @Tags 订单
-// @Accept json
-// @Produce json
-// @Param request body SubmitOrderReq true "订单信息"
-// @Success 200 {object} utils.Response{data=object{orderId=string}}
-// @Router /api/v1/wx/order/submit [post]
+// SubmitOrder 提交订单（支持优惠券）
 func SubmitOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -235,7 +234,7 @@ func SubmitOrder(c *gin.Context) {
 		return
 	}
 
-	// 预检：收集所有商品规格信息，验证库存和价格
+	// 预检商品规格
 	type itemCheck struct {
 		spec     models.Spec
 		qty      int
@@ -277,26 +276,49 @@ func SubmitOrder(c *gin.Context) {
 		})
 	}
 
+	// 计算运费
+	freight := utils.CalculateFreight(totalAmount)
+	actualAmount := totalAmount + freight
+	discountAmount := 0.0
+	var usedCouponID int64
+
+	// 优惠券校验（如果提供）
+	if req.CouponID != "" {
+		cid, err := strconv.ParseInt(req.CouponID, 10, 64)
+		if err == nil {
+			discount, _, err := services.ValidateCoupon(cid, userID, totalAmount+freight)
+			if err != nil {
+				utils.Fail(c, err.Error())
+				return
+			}
+			discountAmount = discount
+			actualAmount = totalAmount + freight - discount
+			if actualAmount < 0 {
+				actualAmount = 0
+			}
+			usedCouponID = cid
+		}
+	}
+
 	// 生成订单号
 	orderNo := fmt.Sprintf("PO%d", time.Now().UnixNano())
-
-	// 组装地址字符串
 	fullAddress := address.Detail
 	if address.Doorplate != "" {
 		fullAddress += " " + address.Doorplate
 	}
 
-	freight := utils.CalculateFreight(totalAmount)
-	actualAmount := totalAmount + freight
-
 	order := models.Order{
-		OrderNo:      orderNo,
-		UserID:       utils.Int64Str(userID),
-		Amount:       totalAmount,
-		Freight:      freight,
-		ActualAmount: actualAmount,
-		Remark:       req.Remark,
-		Status:       models.OrderStatusPending,
+		OrderNo:        orderNo,
+		UserID:         utils.Int64Str(userID),
+		Amount:         totalAmount,
+		Freight:        freight,
+		DiscountAmount: discountAmount,
+		ActualAmount:   actualAmount,
+		Remark:         req.Remark,
+		Status:         models.OrderStatusPending,
+	}
+	if usedCouponID != 0 {
+		order.CouponID = utils.Int64Str(usedCouponID)
 	}
 
 	// 订单地址快照
@@ -314,6 +336,7 @@ func SubmitOrder(c *gin.Context) {
 	}
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// 创建订单
 		if err := tx.Create(&order).Error; err != nil {
 			return err
 		}
@@ -321,8 +344,8 @@ func SubmitOrder(c *gin.Context) {
 		if err := tx.Create(&orderAddress).Error; err != nil {
 			return err
 		}
+		// 扣减库存，保存订单项
 		for _, ch := range checks {
-			// 扣减库存
 			newStock := ch.spec.Stock - ch.qty
 			if err := tx.Model(&ch.spec).Update("stock", newStock).Error; err != nil {
 				return err
@@ -336,6 +359,18 @@ func SubmitOrder(c *gin.Context) {
 				Price:    ch.spec.Price,
 			}
 			if err := tx.Create(&item).Error; err != nil {
+				return err
+			}
+		}
+		// 如果使用了优惠券，更新用户优惠券状态
+		if usedCouponID != 0 {
+			if err := tx.Model(&models.UserCoupon{}).
+				Where("user_id = ? AND coupon_id = ? AND status = ?", userID, usedCouponID, models.UserCouponUnused).
+				Updates(map[string]interface{}{
+					"status":   models.UserCouponUsed,
+					"order_id": order.ID,
+					"used_at":  time.Now(),
+				}).Error; err != nil {
 				return err
 			}
 		}
