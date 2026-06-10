@@ -102,6 +102,7 @@ func main() {
 				// 优惠券
 				appGroup.POST("/coupon/receive", app.ReceiveCoupon)
 				appGroup.GET("/coupon/list", app.GetMyCoupons)
+				appGroup.GET("/coupon/product/:productId", app.GetProductCoupons)
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）
