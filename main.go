@@ -98,6 +98,10 @@ func main() {
 				appGroup.GET("/commission/total", app.GetTotalCommission)
 				appGroup.GET("/commission/list", app.GetCommissionList)
 				appGroup.GET("/commission/friends", app.GetInvitedFriends)
+
+				// 优惠券
+				appGroup.POST("/coupon/receive", app.ReceiveCoupon)
+				appGroup.GET("/coupon/list", app.GetMyCoupons)
 			}
 
 			// 后台管理专用接口（只允许 admin 用户）
@@ -134,6 +138,13 @@ func main() {
 
 				adminGroup.POST("/commission/ratio", admin.SetCommissionRatio)
 				adminGroup.GET("/commission/ratio", admin.GetCommissionRatio)
+
+				// 优惠券管理
+				adminGroup.POST("/coupons", admin.CreateCoupon)
+				adminGroup.GET("/coupons", admin.GetCouponList)
+				adminGroup.GET("/coupons/:id", admin.GetCouponDetail)
+				adminGroup.PUT("/coupons/:id", admin.UpdateCoupon)
+				adminGroup.DELETE("/coupons/:id", admin.DeleteCoupon)
 			}
 		}
 	}

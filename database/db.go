@@ -45,6 +45,8 @@ func InitDB() {
 		&models.Admin{},
 		&models.WxUser{},
 		&models.QRCode{},
+		&models.Coupon{},
+		&models.UserCoupon{},
 		&models.CommissionSetting{
 			Ratio:     10.0,
 			UpdatedBy: "system",
