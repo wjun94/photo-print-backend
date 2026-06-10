@@ -78,6 +78,7 @@ type CreateProductReq struct {
 	Action         models.ProductAction `json:"action" binding:"oneof=confirm upload"`
 	SpecAttributes []SpecAttributeReq   `json:"specAttributes"`
 	Specs          []SpecReq            `json:"specs" binding:"required,min=1"`
+	Tags           []string             `json:"tags"` // 标签数组
 }
 
 // CreateProduct 创建商品（支持多规格）
@@ -176,6 +177,7 @@ type UpdateProductReq struct {
 	Status         *models.ProductStatus `json:"status" binding:"omitempty,oneof=draft on_sale off_sale"`
 	SortOrder      *int                  `json:"sortOrder"`
 	Action         *models.ProductAction `json:"action" binding:"omitempty,oneof=confirm upload"` // 新增
+	Tags           *[]string             `json:"tags"`                                            // 指针，支持部分更新
 	SpecAttributes *[]SpecAttributeReq   `json:"specAttributes"`                                  // 全量替换规格属性
 	Specs          *[]SpecReq            `json:"specs"`                                           // 全量替换 SKU
 }
@@ -235,6 +237,11 @@ func UpdateProduct(c *gin.Context) {
 	}
 	if req.Action != nil {
 		updates["action"] = *req.Action
+	}
+	if req.Tags != nil {
+		updates["tags"] = models.StringArray(*req.Tags)
+		// tagsJSON, _ := json.Marshal(*req.Tags)
+		// updates["tags"] = string(tagsJSON)
 	}
 	if len(updates) > 0 {
 		updates["updated_at"] = utils.LocalTime(time.Now())

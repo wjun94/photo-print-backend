@@ -35,6 +35,7 @@ type Product struct {
 	CreatedAt    utils.LocalTime `json:"createdAt"`                                // 创建时间
 	UpdatedAt    utils.LocalTime `json:"updatedAt"`                                // 更新时间
 	Action       ProductAction   `gorm:"size:20;default:'confirm'" json:"action"`  // confirm-确认订单, upload-上传照片
+	Tags         StringArray     `gorm:"type:json;serializer:json" json:"tags"`    // 商品标签，JSON 数组存储，如 ["热销","新品"]
 
 	// 关联的规格属性模板（如颜色、尺寸的可选值）
 	SpecAttributes []SpecAttribute `gorm:"foreignKey:ProductID" json:"specAttributes,omitempty"`
