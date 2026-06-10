@@ -37,7 +37,15 @@ type PreviewItemResponse struct {
 	ImageURL    string  `json:"imageUrl"`
 }
 
-// PreviewOrder 确认订单页面预览（支持优惠券）
+// PreviewOrder 确认订单页面预览（支持自动选最佳优惠券）
+// @Summary 订单预览
+// @Description 根据商品、规格、数量计算金额，若提供couponId则使用指定券，否则自动选择最佳可用券
+// @Tags 订单
+// @Accept json
+// @Produce json
+// @Param request body PreviewOrderReq true "预览请求（couponId可选）"
+// @Success 200 {object} utils.Response{data=object{items=[]PreviewItemResponse,specs=[]models.SpecSummaryResponse,totalAmount=float64,freight=float64,discountAmount=float64,actualAmount=float64,defaultAddress=object,selectedCouponId=string}}
+// @Router /api/v1/wx/order/preview [post]
 func PreviewOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -51,11 +59,11 @@ func PreviewOrder(c *gin.Context) {
 		return
 	}
 
+	// ---------- 商品校验与金额计算 ----------
 	var previewItems []PreviewItemResponse
 	var totalAmount float64
 	specSummaryMap := make(map[string]*models.SpecSummaryResponse)
 
-	// 验证商品规格（与原逻辑相同）
 	for _, it := range req.Items {
 		productID, err := strconv.ParseInt(req.ProductID, 10, 64)
 		if err != nil {
@@ -136,7 +144,7 @@ func PreviewOrder(c *gin.Context) {
 		specSummaries = append(specSummaries, *summary)
 	}
 
-	// 获取默认地址
+	// 获取用户默认地址
 	var defaultAddress models.Address
 	addrErr := database.DB.Where("user_id = ? AND is_default = ?", userID, true).First(&defaultAddress).Error
 	var addressResp interface{}
@@ -165,36 +173,54 @@ func PreviewOrder(c *gin.Context) {
 	}
 
 	freight := utils.CalculateFreight(totalAmount)
-	actualAmount := totalAmount + freight
+	totalWithFreight := totalAmount + freight
 	discountAmount := 0.0
+	selectedCouponID := ""
 
-	// 优惠券处理（预览）
+	// ---------- 优惠券处理 ----------
 	if req.CouponID != "" {
-		couponID, err := strconv.ParseInt(req.CouponID, 10, 64)
-		if err == nil {
-			discount, _, err := services.ValidateCoupon(couponID, userID, totalAmount+freight)
-			if err == nil {
-				discountAmount = discount
-				actualAmount = totalAmount + freight - discount
-				if actualAmount < 0 {
-					actualAmount = 0
-				}
-			} else {
-				// 优惠券无效，返回错误信息（可根据需求决定是否阻断）
-				utils.Fail(c, err.Error())
-				return
-			}
+		// 使用指定的优惠券
+		cid, err := strconv.ParseInt(req.CouponID, 10, 64)
+		if err != nil {
+			utils.Fail(c, "无效优惠券ID")
+			return
+		}
+		var userCoupon models.UserCoupon
+		if err := database.DB.Where("user_id = ? AND coupon_id = ? AND status = ?", userID, cid, models.UserCouponUnused).
+			Preload("Coupon").First(&userCoupon).Error; err != nil {
+			utils.Fail(c, "优惠券不存在或不可用")
+			return
+		}
+		disc, err := services.ValidateUserCoupon(userCoupon, totalWithFreight, []string{req.ProductID})
+		if err != nil {
+			utils.Fail(c, err.Error())
+			return
+		}
+		discountAmount = disc
+		selectedCouponID = req.CouponID
+	} else {
+		// 自动选择最佳优惠券
+		disc, cid, err := services.GetBestCouponForOrder(userID, totalWithFreight, []string{req.ProductID})
+		if err == nil && disc > 0 {
+			discountAmount = disc
+			selectedCouponID = cid
 		}
 	}
 
+	finalAmount := totalWithFreight - discountAmount
+	if finalAmount < 0 {
+		finalAmount = 0
+	}
+
 	utils.Success(c, gin.H{
-		"items":          previewItems,
-		"specs":          specSummaries,
-		"totalAmount":    totalAmount,
-		"freight":        freight,
-		"discountAmount": discountAmount,
-		"actualAmount":   actualAmount,
-		"defaultAddress": addressResp,
+		"items":            previewItems,
+		"specs":            specSummaries,
+		"totalAmount":      totalAmount,
+		"freight":          freight,
+		"discountAmount":   discountAmount,
+		"actualAmount":     finalAmount,
+		"defaultAddress":   addressResp,
+		"selectedCouponId": selectedCouponID,
 	})
 }
 
