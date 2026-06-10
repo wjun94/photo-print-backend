@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"photo-print-backend/config"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
 	"photo-print-backend/utils"
@@ -129,6 +130,7 @@ func GetProductDetailForWx(c *gin.Context) {
 		utils.Fail(c, "商品不存在或已下架")
 		return
 	}
+	product.FreeShippingAmount = config.AppConfig.FreeShippingAmount
 	// 直接返回完整商品对象，其中包含 Action 字段
 	utils.Success(c, product)
 }

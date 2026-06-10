@@ -50,7 +50,7 @@ func LoadConfig() {
 
 	// 运费
 	AppConfig.FixedFreight = getEnvFloat64("FIXED_FREIGHT", 10.0)
-	AppConfig.FreeShippingAmount = getEnvFloat64("FREE_SHIPPING_AMOUNT", 28.0)
+	AppConfig.FreeShippingAmount = getEnvFloat64("FREE_SHIPPING_AMOUNT", 10.0)
 
 	// 新增七牛云配置
 	AppConfig.QiniuAccessKey = getEnv("QINIU_ACCESS_KEY", "")
