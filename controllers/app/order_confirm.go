@@ -126,7 +126,7 @@ func SubmitOrder(c *gin.Context) {
 
 		// 直接查询用户优惠券实例，并预加载模板信息
 		var userCoupon models.UserCoupon
-		err = database.DB.Preload("Coupon").Where("id = ? AND user_id = ? AND status = ?",
+		err = database.DB.Preload("Coupon").Where("coupon_id = ? AND user_id = ? AND status = ?",
 			userCouponID, userID, models.UserCouponUnused).First(&userCoupon).Error
 		if err != nil {
 			utils.Fail(c, "优惠券不存在或不可用")
@@ -209,6 +209,7 @@ func SubmitOrder(c *gin.Context) {
 	}
 	fmt.Println("----------")
 	fmt.Println(usedUserCouponID)
+	fmt.Println(req.CouponID)
 	if usedUserCouponID != 0 {
 		order.CouponID = utils.Int64Str(usedUserCouponID) // 存储用户优惠券实例ID
 	}
