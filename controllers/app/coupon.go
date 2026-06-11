@@ -161,14 +161,15 @@ func GetMyCoupons(c *gin.Context) {
 	utils.Success(c, userCoupons)
 }
 
-// GetProductCoupons 获取商品可领取的优惠券列表
+// GetProductCoupons 获取商品可领取的优惠券列表（用户维度累计限制）
 // @Summary 获取商品可领优惠券
-// @Description 根据商品ID，返回当前可领取且适用于该商品的优惠券列表
+// @Description 根据商品ID，返回当前可领取且适用于该商品的优惠券列表，并附带用户累计领取总数和剩余可领次数（基于累计次数限制）。
+// @Description 注意：用户使用/过期后仍会计入已领取总数，因此每人最多领取次数受UserLimitType/UserLimitNum限制（累计制）。
 // @Tags 优惠券
 // @Accept json
 // @Produce json
 // @Param productId path string true "商品ID"
-// @Success 200 {object} utils.Response{data=[]models.Coupon}
+// @Success 200 {object} utils.Response{data=[]CouponDetail}
 // @Router /api/v1/wx/coupon/product/{productId} [get]
 func GetProductCoupons(c *gin.Context) {
 	userID, _ := utils.GetUserID(c)
@@ -177,71 +178,119 @@ func GetProductCoupons(c *gin.Context) {
 
 	var coupons []models.Coupon
 	query := database.DB.Where("publish_status = ?", models.PublishStatusPublished).
-		Where("receive_start <= ? AND receive_end >= ?", now, now)
-	query = query.Where("use_scope = ? OR (use_scope = ? AND find_in_set(?, product_ids) > 0)",
-		models.UseScopeAll, models.UseScopeSpec, productIdStr)
+		Where("receive_start <= ? AND receive_end >= ?", now, now).
+		Where("use_scope = ? OR (use_scope = ? AND find_in_set(?, product_ids) > 0)",
+			models.UseScopeAll, models.UseScopeSpec, productIdStr)
+
 	if err := query.Find(&coupons).Error; err != nil {
 		utils.Fail(c, "查询优惠券失败")
 		return
 	}
 
-	// 1. 批量获取当前用户对每张优惠券的已领取数量
-	receivedCountMap := make(map[utils.Int64Str]int64)
+	// 累计领取总数 map
+	totalMap := make(map[utils.Int64Str]int64)
+	// 有效持有数量 map（未使用且未过期）
+	validMap := make(map[utils.Int64Str]int64)
+	// 有效券实例ID map（每个模板取最早的一张）
+	firstValidIDMap := make(map[utils.Int64Str]utils.Int64Str)
 	if userID != 0 {
-		// 临时结构体，用于接收 group by 结果
-		type UserCouponCount struct {
+		// 累计总数
+		type CountResult struct {
 			CouponID utils.Int64Str
 			Cnt      int64
 		}
-		var counts []UserCouponCount
-		err := database.DB.Model(&models.UserCoupon{}).
+		var totals []CountResult
+		database.DB.Model(&models.UserCoupon{}).
 			Where("user_id = ?", userID).
 			Select("coupon_id, count(*) as cnt").
 			Group("coupon_id").
-			Scan(&counts).Error
-		if err == nil {
-			for _, c := range counts {
-				receivedCountMap[c.CouponID] = c.Cnt
-			}
+			Scan(&totals)
+		for _, t := range totals {
+			totalMap[t.CouponID] = t.Cnt
+		}
+
+		// 有效持有数
+		var valids []CountResult
+		database.DB.Model(&models.UserCoupon{}).
+			Where("user_id = ? AND status = ? AND valid_start <= ? AND valid_end >= ?",
+				userID, models.UserCouponUnused, now, now).
+			Select("coupon_id, count(*) as cnt").
+			Group("coupon_id").
+			Scan(&valids)
+		for _, v := range valids {
+			validMap[v.CouponID] = v.Cnt
+		}
+		// 获取每个优惠券模板下用户持有的第一张有效券ID
+		type FirstValid struct {
+			CouponID utils.Int64Str
+			ID       utils.Int64Str
+		}
+		var firstValids []FirstValid
+		database.DB.Model(&models.UserCoupon{}).
+			Where("user_id = ? AND status = ? AND valid_start <= ? AND valid_end >= ?",
+				userID, models.UserCouponUnused, now, now).
+			Select("coupon_id, MIN(id) as id").
+			Group("coupon_id").
+			Scan(&firstValids)
+		for _, fv := range firstValids {
+			firstValidIDMap[fv.CouponID] = fv.ID
 		}
 	}
 
-	// 2. 构造返回结果，附加领取状态和剩余可领次数
 	type CouponDetail struct {
 		models.Coupon
-		IsReceived   bool  `json:"isReceived"`   // 是否已领取（至少一张）
-		RemainCanGet int64 `json:"remainCanGet"` // 还可领取张数，-1表示不限制
+		IsReceived   bool   `json:"isReceived"`   // 历史是否领过
+		RemainCanGet int64  `json:"remainCanGet"` // 还可领取次数（累计剩余）
+		Status       int    `json:"status"`       // 0-可领取 1-可使用 2-已达上限
+		UserCouponID string `json:"userCouponId"` // 当 status=1 时返回可用券实例ID
 	}
 	result := make([]CouponDetail, 0)
 
 	for _, coupon := range coupons {
-		// 库存检查：总库存有限且已发数量已达上限时不展示
+		// 库存检查
 		if coupon.TotalStock > 0 && coupon.ReceivedNum >= coupon.TotalStock {
 			continue
 		}
 
-		// 获取当前用户的已领数量
-		var receivedCnt int64 = 0
-		if userID != 0 {
-			receivedCnt = receivedCountMap[coupon.ID]
-		}
-		isReceived := receivedCnt > 0
+		receivedTotal := totalMap[coupon.ID]
+		validCnt := validMap[coupon.ID]
+		isReceived := receivedTotal > 0
 
-		// 计算剩余可领次数（用户维度）
-		var remain int64 = -1 // 默认无限制
+		// 计算累计剩余可领次数
+		var remain int64 = -1
 		switch coupon.UserLimitType {
-		case 1: // 无限
+		case 1:
 			remain = -1
-		case 2: // 限总量
-			remain = int64(coupon.UserLimitNum) - receivedCnt
+		case 2:
+			remain = int64(coupon.UserLimitNum) - receivedTotal
 			if remain < 0 {
 				remain = 0
 			}
-		case 3: // 限1张
-			if receivedCnt >= 1 {
+		case 3:
+			if receivedTotal >= 1 {
 				remain = 0
 			} else {
 				remain = 1
+			}
+		}
+
+		// 状态判断  0-可领取 1-可使用 2-已达上限
+		var status int
+		if validCnt > 0 {
+			// 有可用的券
+			status = 1 // 可使用
+		} else {
+			if remain > 0 || remain == -1 {
+				status = 0 // 可领取
+			} else {
+				status = 2 // 已达上限（已使用完或累计已满）
+			}
+		}
+
+		userCouponIDStr := ""
+		if status == 1 {
+			if id, ok := firstValidIDMap[coupon.ID]; ok {
+				userCouponIDStr = id.String()
 			}
 		}
 
@@ -249,6 +298,8 @@ func GetProductCoupons(c *gin.Context) {
 			Coupon:       coupon,
 			IsReceived:   isReceived,
 			RemainCanGet: remain,
+			Status:       status,
+			UserCouponID: userCouponIDStr,
 		})
 	}
 

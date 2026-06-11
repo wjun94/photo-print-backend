@@ -29,6 +29,7 @@ type UserCoupon struct {
 	ReceivedAt time.Time        `json:"receivedAt"`                               // 用户领取该券的时间
 	ValidStart time.Time        `json:"validStart"`                               // 单张券生效起始时间
 	ValidEnd   time.Time        `json:"validEnd"`                                 // 单张券失效截止时间
+	Coupon     Coupon           `gorm:"foreignKey:CouponID;references:ID" json:"coupon,omitempty"`
 }
 
 // BeforeCreate GORM创建前钩子函数

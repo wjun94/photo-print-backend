@@ -8,232 +8,37 @@ import (
 	"photo-print-backend/services"
 	"photo-print-backend/utils"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-type PreviewOrderItem struct {
-	ImageURL string `json:"imageUrl"`
+// SubmitOrderItem 提交订单商品项
+type SubmitOrderItem struct {
 	Quantity int    `json:"quantity" binding:"required,min=1"`
-}
-
-type PreviewOrderReq struct {
-	ProductID string             `json:"productId" binding:"required"`
-	SpecID    string             `json:"specId" binding:"required"`
-	Items     []PreviewOrderItem `json:"items" binding:"required,min=1"`
-	CouponID  string             `json:"couponId"` // 新增：优惠券ID（可选）
-}
-
-type PreviewItemResponse struct {
-	ProductID   string  `json:"productId"`
-	ProductName string  `json:"productName"`
-	SpecID      string  `json:"specId"`
-	SpecName    string  `json:"specName"`
-	Price       float64 `json:"price"`
-	Quantity    int     `json:"quantity"`
-	Subtotal    float64 `json:"subtotal"`
-	ImageURL    string  `json:"imageUrl"`
-}
-
-// PreviewOrder 确认订单页面预览（支持自动选最佳优惠券）
-// @Summary 订单预览
-// @Description 根据商品、规格、数量计算金额，若提供couponId则使用指定券，否则自动选择最佳可用券
-// @Tags 订单
-// @Accept json
-// @Produce json
-// @Param request body PreviewOrderReq true "预览请求（couponId可选）"
-// @Success 200 {object} utils.Response{data=object{items=[]PreviewItemResponse,specs=[]models.SpecSummaryResponse,totalAmount=float64,freight=float64,discountAmount=float64,actualAmount=float64,defaultAddress=object,selectedCouponId=string}}
-// @Router /api/v1/wx/order/preview [post]
-func PreviewOrder(c *gin.Context) {
-	userID, ok := utils.GetUserID(c)
-	if !ok {
-		utils.Unauthorized(c, "未登录")
-		return
-	}
-
-	var req PreviewOrderReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.Fail(c, "参数错误: "+err.Error())
-		return
-	}
-
-	// ---------- 商品校验与金额计算 ----------
-	var previewItems []PreviewItemResponse
-	var totalAmount float64
-	specSummaryMap := make(map[string]*models.SpecSummaryResponse)
-
-	for _, it := range req.Items {
-		productID, err := strconv.ParseInt(req.ProductID, 10, 64)
-		if err != nil {
-			utils.Fail(c, "无效的商品ID: "+req.ProductID)
-			return
-		}
-		specID, err := strconv.ParseInt(req.SpecID, 10, 64)
-		if err != nil {
-			utils.Fail(c, "无效的规格ID: "+req.SpecID)
-			return
-		}
-
-		var spec models.Spec
-		if err := database.DB.Preload("Product").First(&spec, specID).Error; err != nil {
-			utils.Fail(c, "规格不存在: "+req.SpecID)
-			return
-		}
-		product := spec.Product
-		if product.ID.Int64() != productID {
-			utils.Fail(c, "商品与规格不匹配")
-			return
-		}
-		if product.Status != models.ProductStatusOnSale {
-			utils.Fail(c, "商品["+product.Name+"]已下架")
-			return
-		}
-		if spec.Stock < it.Quantity {
-			utils.Fail(c, "规格库存不足")
-			return
-		}
-
-		imageURL := it.ImageURL
-		if product.Action == models.ProductActionUpload {
-			if imageURL == "" {
-				utils.Fail(c, "该商品需要上传图片，请提供图片URL")
-				return
-			}
-		} else {
-			if imageURL == "" {
-				imageURL = product.CoverImage
-			}
-		}
-
-		subtotal := float64(it.Quantity) * spec.Price
-		totalAmount += subtotal
-
-		previewItems = append(previewItems, PreviewItemResponse{
-			ProductID:   product.ID.String(),
-			ProductName: product.Name,
-			SpecID:      spec.ID.String(),
-			SpecName:    services.GetSpecDisplayName(spec),
-			Price:       spec.Price,
-			Quantity:    it.Quantity,
-			Subtotal:    subtotal,
-			ImageURL:    imageURL,
-		})
-
-		specIDStr := spec.ID.String()
-		if summary, exists := specSummaryMap[specIDStr]; exists {
-			summary.TotalQuantity += it.Quantity
-			summary.TotalSubtotal += subtotal
-		} else {
-			specSummaryMap[specIDStr] = &models.SpecSummaryResponse{
-				ProductID:     product.ID.String(),
-				ProductName:   product.Name,
-				SpecID:        specIDStr,
-				SpecName:      services.GetSpecDisplayName(spec),
-				Price:         spec.Price,
-				TotalQuantity: it.Quantity,
-				TotalSubtotal: subtotal,
-				ImageURL:      imageURL,
-			}
-		}
-	}
-
-	var specSummaries []models.SpecSummaryResponse
-	for _, summary := range specSummaryMap {
-		specSummaries = append(specSummaries, *summary)
-	}
-
-	// 获取用户默认地址
-	var defaultAddress models.Address
-	addrErr := database.DB.Where("user_id = ? AND is_default = ?", userID, true).First(&defaultAddress).Error
-	var addressResp interface{}
-	if addrErr == nil {
-		addressResp = struct {
-			ID           string `json:"id"`
-			ReceiverName string `json:"receiverName"`
-			Mobile       string `json:"mobile"`
-			ProvinceName string `json:"provinceName"`
-			CityName     string `json:"cityName"`
-			DistrictName string `json:"districtName"`
-			Detail       string `json:"detail"`
-			Doorplate    string `json:"doorplate"`
-		}{
-			ID:           defaultAddress.ID.String(),
-			ReceiverName: defaultAddress.ReceiverName,
-			Mobile:       defaultAddress.Mobile,
-			ProvinceName: utils.GetRegionName(defaultAddress.ProvinceID),
-			CityName:     utils.GetRegionName(defaultAddress.CityID),
-			DistrictName: utils.GetRegionName(defaultAddress.DistrictID),
-			Detail:       defaultAddress.Detail,
-			Doorplate:    defaultAddress.Doorplate,
-		}
-	} else {
-		addressResp = nil
-	}
-
-	freight := utils.CalculateFreight(totalAmount)
-	totalWithFreight := totalAmount + freight
-	discountAmount := 0.0
-	selectedCouponID := ""
-
-	// ---------- 优惠券处理 ----------
-	if req.CouponID != "" {
-		// 使用指定的优惠券
-		cid, err := strconv.ParseInt(req.CouponID, 10, 64)
-		if err != nil {
-			utils.Fail(c, "无效优惠券ID")
-			return
-		}
-		var userCoupon models.UserCoupon
-		if err := database.DB.Where("user_id = ? AND coupon_id = ? AND status = ?", userID, cid, models.UserCouponUnused).
-			Preload("Coupon").First(&userCoupon).Error; err != nil {
-			utils.Fail(c, "优惠券不存在或不可用")
-			return
-		}
-		disc, err := services.ValidateUserCoupon(userCoupon, totalWithFreight, []string{req.ProductID})
-		if err != nil {
-			utils.Fail(c, err.Error())
-			return
-		}
-		discountAmount = disc
-		selectedCouponID = req.CouponID
-	} else {
-		// 自动选择最佳优惠券
-		disc, cid, err := services.GetBestCouponForOrder(userID, totalWithFreight, []string{req.ProductID})
-		if err == nil && disc > 0 {
-			discountAmount = disc
-			selectedCouponID = cid
-		}
-	}
-
-	finalAmount := totalWithFreight - discountAmount
-	if finalAmount < 0 {
-		finalAmount = 0
-	}
-
-	utils.Success(c, gin.H{
-		"items":            previewItems,
-		"specs":            specSummaries,
-		"totalAmount":      totalAmount,
-		"freight":          freight,
-		"discountAmount":   discountAmount,
-		"actualAmount":     finalAmount,
-		"defaultAddress":   addressResp,
-		"selectedCouponId": selectedCouponID,
-	})
+	ImageURL string `json:"imageUrl"`
 }
 
 // SubmitOrderReq 提交订单请求（增加优惠券ID）
 type SubmitOrderReq struct {
-	AddressId string             `json:"addressId" binding:"required"`
-	ProductID string             `json:"productId" binding:"required"`
-	SpecID    string             `json:"specId" binding:"required"`
-	Items     []PreviewOrderItem `json:"items" binding:"required,min=1"`
-	Remark    string             `json:"remark"`
-	CouponID  string             `json:"couponId"`
+	AddressId string            `json:"addressId" binding:"required"`
+	ProductID string            `json:"productId" binding:"required"`
+	SpecID    string            `json:"specId" binding:"required"`
+	Items     []SubmitOrderItem `json:"items" binding:"required,min=1"`
+	Remark    string            `json:"remark"`
+	CouponID  string            `json:"couponId"`
 }
 
+// SubmitOrder 提交订单（支持优惠券）
+// @Summary 提交订单
+// @Tags 订单
+// @Accept json
+// @Produce json
+// @Param request body SubmitOrderReq true "订单信息"
+// @Success 200 {object} utils.Response{data=object{orderId string}}
+// @Router /api/v1/wx/order/submit [post]
 // SubmitOrder 提交订单（支持优惠券）
 func SubmitOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
@@ -248,7 +53,7 @@ func SubmitOrder(c *gin.Context) {
 		return
 	}
 
-	// 验证地址
+	// ---------- 验证地址 ----------
 	addressID, _ := strconv.ParseInt(req.AddressId, 10, 64)
 	var address models.Address
 	if err := database.DB.First(&address, addressID).Error; err != nil {
@@ -260,7 +65,7 @@ func SubmitOrder(c *gin.Context) {
 		return
 	}
 
-	// 预检商品规格
+	// ---------- 预检商品规格 ----------
 	type itemCheck struct {
 		spec     models.Spec
 		qty      int
@@ -270,10 +75,10 @@ func SubmitOrder(c *gin.Context) {
 	checks := make([]itemCheck, 0, len(req.Items))
 	var totalAmount float64
 
-	for _, it := range req.Items {
-		productID, _ := strconv.ParseInt(req.ProductID, 10, 64)
-		specID, _ := strconv.ParseInt(req.SpecID, 10, 64)
+	productID, _ := strconv.ParseInt(req.ProductID, 10, 64)
+	specID, _ := strconv.ParseInt(req.SpecID, 10, 64)
 
+	for _, it := range req.Items {
 		var spec models.Spec
 		if err := database.DB.Preload("Product").First(&spec, specID).Error; err != nil {
 			utils.Fail(c, "规格不存在: "+req.SpecID)
@@ -302,37 +107,96 @@ func SubmitOrder(c *gin.Context) {
 		})
 	}
 
-	// 计算运费
+	// ---------- 运费与初始金额 ----------
 	freight := utils.CalculateFreight(totalAmount)
 	actualAmount := totalAmount + freight
 	discountAmount := 0.0
-	var usedCouponID int64
+	var usedUserCouponID int64 // 用户优惠券实例ID
 
-	// 优惠券校验（如果提供）
+	// ---------- 优惠券处理（修正） ----------
 	if req.CouponID != "" {
-		cid, err := strconv.ParseInt(req.CouponID, 10, 64)
-		if err == nil {
-			discount, _, err := services.ValidateCoupon(cid, userID, totalAmount+freight)
-			if err != nil {
-				utils.Fail(c, err.Error())
-				return
-			}
-			discountAmount = discount
-			actualAmount = totalAmount + freight - discount
-			if actualAmount < 0 {
-				actualAmount = 0
-			}
-			usedCouponID = cid
+		// 打印前端传入的原始值，用于调试
+		fmt.Printf("前端传入的 couponId: %s\n", req.CouponID)
+
+		userCouponID, err := strconv.ParseInt(req.CouponID, 10, 64)
+		if err != nil {
+			utils.Fail(c, "优惠券ID格式错误")
+			return
 		}
+
+		// 直接查询用户优惠券实例，并预加载模板信息
+		var userCoupon models.UserCoupon
+		err = database.DB.Preload("Coupon").Where("id = ? AND user_id = ? AND status = ?",
+			userCouponID, userID, models.UserCouponUnused).First(&userCoupon).Error
+		if err != nil {
+			utils.Fail(c, "优惠券不存在或不可用")
+			return
+		}
+
+		// 检查有效期
+		now := time.Now()
+		if now.Before(userCoupon.ValidStart) || now.After(userCoupon.ValidEnd) {
+			utils.Fail(c, "优惠券已过期")
+			return
+		}
+
+		coupon := userCoupon.Coupon
+		orderTotal := totalAmount + freight
+
+		// 检查商品适用范围
+		scopeOK := false
+		if coupon.UseScope == models.UseScopeAll {
+			scopeOK = true
+		} else if coupon.UseScope == models.UseScopeSpec {
+			productIDs := strings.Split(coupon.ProductIDs, ",")
+			for _, pid := range productIDs {
+				if strings.TrimSpace(pid) == req.ProductID {
+					scopeOK = true
+					break
+				}
+			}
+		}
+		if !scopeOK {
+			utils.Fail(c, "优惠券不适用于当前商品")
+			return
+		}
+
+		// 门槛检查
+		if orderTotal < coupon.FullAmount {
+			utils.Fail(c, fmt.Sprintf("订单金额未满 %.2f 元，无法使用该优惠券", coupon.FullAmount))
+			return
+		}
+
+		// 计算抵扣金额
+		if coupon.Type == 1 { // 满减
+			discountAmount = coupon.ReduceAmount
+			if discountAmount > orderTotal {
+				discountAmount = orderTotal
+			}
+		} else if coupon.Type == 2 { // 折扣
+			discountAmount = orderTotal * (1 - coupon.DiscountRate)
+			if coupon.MaxReduce > 0 && discountAmount > coupon.MaxReduce {
+				discountAmount = coupon.MaxReduce
+			}
+			if discountAmount > orderTotal {
+				discountAmount = orderTotal
+			}
+		} else {
+			utils.Fail(c, "不支持的优惠券类型")
+			return
+		}
+
+		actualAmount = orderTotal - discountAmount
+		if actualAmount < 0 {
+			actualAmount = 0
+		}
+		usedUserCouponID = userCoupon.ID.Int64()
 	}
 
-	// 生成订单号
+	// ---------- 生成订单号 ----------
 	orderNo := fmt.Sprintf("PO%d", time.Now().UnixNano())
-	fullAddress := address.Detail
-	if address.Doorplate != "" {
-		fullAddress += " " + address.Doorplate
-	}
 
+	// ---------- 构建订单对象 ----------
 	order := models.Order{
 		OrderNo:        orderNo,
 		UserID:         utils.Int64Str(userID),
@@ -343,11 +207,13 @@ func SubmitOrder(c *gin.Context) {
 		Remark:         req.Remark,
 		Status:         models.OrderStatusPending,
 	}
-	if usedCouponID != 0 {
-		order.CouponID = utils.Int64Str(usedCouponID)
+	fmt.Println("----------")
+	fmt.Println(usedUserCouponID)
+	if usedUserCouponID != 0 {
+		order.CouponID = utils.Int64Str(usedUserCouponID) // 存储用户优惠券实例ID
 	}
 
-	// 订单地址快照
+	// 订单地址快照（略，同原代码）
 	orderAddress := models.OrderAddress{
 		ReceiverName: address.ReceiverName,
 		Mobile:       address.Mobile,
@@ -361,6 +227,7 @@ func SubmitOrder(c *gin.Context) {
 		Doorplate:    address.Doorplate,
 	}
 
+	// ---------- 事务执行 ----------
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建订单
 		if err := tx.Create(&order).Error; err != nil {
@@ -388,16 +255,22 @@ func SubmitOrder(c *gin.Context) {
 				return err
 			}
 		}
-		// 如果使用了优惠券，更新用户优惠券状态
-		if usedCouponID != 0 {
-			if err := tx.Model(&models.UserCoupon{}).
-				Where("user_id = ? AND coupon_id = ? AND status = ?", userID, usedCouponID, models.UserCouponUnused).
+		fmt.Println("----------2")
+		fmt.Println(usedUserCouponID)
+		// 更新用户优惠券状态（使用用户优惠券实例ID）
+		if usedUserCouponID != 0 {
+			result := tx.Model(&models.UserCoupon{}).
+				Where("id = ? AND user_id = ? AND status = ?", usedUserCouponID, userID, models.UserCouponUnused).
 				Updates(map[string]interface{}{
 					"status":   models.UserCouponUsed,
 					"order_id": order.ID,
 					"used_at":  time.Now(),
-				}).Error; err != nil {
-				return err
+				})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return fmt.Errorf("优惠券已被使用或不存在")
 			}
 		}
 		return nil

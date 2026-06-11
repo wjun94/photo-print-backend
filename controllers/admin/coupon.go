@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"fmt"
 	"photo-print-backend/database"
 	"photo-print-backend/models"
 	"photo-print-backend/utils"
@@ -318,7 +319,11 @@ func UpdateCoupon(c *gin.Context) {
 		updates["target_user_type"] = *req.TargetUserType
 	}
 	if req.ReceiveStart != nil {
-		t, err := time.Parse("2006-01-02 15:04:05", *req.ReceiveStart)
+		fmt.Println("-----")
+		fmt.Println(*req.ReceiveStart)
+		t, err := time.Parse(time.RFC3339, *req.ReceiveStart)
+		fmt.Println(t)
+
 		if err != nil {
 			utils.Fail(c, "receiveStart 格式错误")
 			return
@@ -326,7 +331,7 @@ func UpdateCoupon(c *gin.Context) {
 		updates["receive_start"] = t
 	}
 	if req.ReceiveEnd != nil {
-		t, err := time.Parse("2006-01-02 15:04:05", *req.ReceiveEnd)
+		t, err := time.Parse(time.RFC3339, *req.ReceiveEnd)
 		if err != nil {
 			utils.Fail(c, "receiveEnd 格式错误")
 			return
