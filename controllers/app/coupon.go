@@ -191,8 +191,6 @@ func GetProductCoupons(c *gin.Context) {
 	totalMap := make(map[utils.Int64Str]int64)
 	// 有效持有数量 map（未使用且未过期）
 	validMap := make(map[utils.Int64Str]int64)
-	// 有效券实例ID map（每个模板取最早的一张）
-	firstValidIDMap := make(map[utils.Int64Str]utils.Int64Str)
 	if userID != 0 {
 		// 累计总数
 		type CountResult struct {
@@ -225,24 +223,13 @@ func GetProductCoupons(c *gin.Context) {
 			CouponID utils.Int64Str
 			ID       utils.Int64Str
 		}
-		var firstValids []FirstValid
-		database.DB.Model(&models.UserCoupon{}).
-			Where("user_id = ? AND status = ? AND valid_start <= ? AND valid_end >= ?",
-				userID, models.UserCouponUnused, now, now).
-			Select("coupon_id, MIN(id) as id").
-			Group("coupon_id").
-			Scan(&firstValids)
-		for _, fv := range firstValids {
-			firstValidIDMap[fv.CouponID] = fv.ID
-		}
 	}
 
 	type CouponDetail struct {
 		models.Coupon
-		IsReceived   bool   `json:"isReceived"`   // 历史是否领过
-		RemainCanGet int64  `json:"remainCanGet"` // 还可领取次数（累计剩余）
-		Status       int    `json:"status"`       // 0-可领取 1-可使用 2-已达上限
-		UserCouponID string `json:"userCouponId"` // 当 status=1 时返回可用券实例ID
+		IsReceived   bool  `json:"isReceived"`   // 历史是否领过
+		RemainCanGet int64 `json:"remainCanGet"` // 还可领取次数（累计剩余）
+		Status       int   `json:"status"`       // 0-可领取 1-可使用 2-已达上限
 	}
 	result := make([]CouponDetail, 0)
 
@@ -287,19 +274,11 @@ func GetProductCoupons(c *gin.Context) {
 			}
 		}
 
-		userCouponIDStr := ""
-		if status == 1 {
-			if id, ok := firstValidIDMap[coupon.ID]; ok {
-				userCouponIDStr = id.String()
-			}
-		}
-
 		result = append(result, CouponDetail{
 			Coupon:       coupon,
 			IsReceived:   isReceived,
 			RemainCanGet: remain,
 			Status:       status,
-			UserCouponID: userCouponIDStr,
 		})
 	}
 

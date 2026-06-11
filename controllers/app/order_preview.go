@@ -21,7 +21,7 @@ type PreviewOrderReq struct {
 	ProductID string             `json:"productId" binding:"required"`
 	SpecID    string             `json:"specId" binding:"required"`
 	Items     []PreviewOrderItem `json:"items" binding:"required,min=1"`
-	CouponID  string             `json:"couponId"` // 传入代表用户手动切换/指定券
+	CouponID  string             `json:"couponId"` // 用户优惠券实例ID，可选
 }
 
 type PreviewItemResponse struct {
@@ -44,11 +44,11 @@ type PreviewCouponResponse struct {
 	MinAmount    float64 `json:"minAmount"`
 	ValidStart   string  `json:"validStart"`
 	ValidEnd     string  `json:"validEnd"`
-	Selectable   bool    `json:"selectable"` // 是否满足当前订单使用条件
-	Reason       string  `json:"reason"`     // 不可用原因
+	Status       int     `json:"status"` // 1-可使用，0-不可使用
+	Reason       string  `json:"reason"` // 不可使用原因
 }
 
-// PreviewOrder 确认订单页面预览（支持返回券列表及自动选最佳券）
+// PreviewOrder 确认订单页面预览
 // @Summary 订单预览
 // @Description 根据商品、规格、数量计算金额，返回可用/不可用券列表。若提供couponId则使用指定券，否则自动选择最佳可用券
 // @Tags 订单
@@ -184,12 +184,11 @@ func PreviewOrder(c *gin.Context) {
 	}
 
 	freight := utils.CalculateFreight(totalAmount)
-	totalWithFreight := totalAmount + freight // 注意底层计算优惠券门槛一般不包含运费，可根据业务传入 totalAmount 或 totalWithFreight
+	totalWithFreight := totalAmount + freight
 
 	// ---------- 3. 优惠券列表拉取与多维度校验 ----------
 	var userCoupons []models.UserCoupon
 	now := time.Now()
-	// 拉取该用户名下所有：未使用、在有效期内 的优惠券记录
 	database.DB.Where("user_id = ? AND status = ? AND valid_start <= ? AND valid_end >= ?",
 		userID, models.UserCouponUnused, now, now).
 		Preload("Coupon").
@@ -199,14 +198,11 @@ func PreviewOrder(c *gin.Context) {
 	var bestUserCouponID string
 	var maxDiscountAmount float64
 
-	// 遍历用户持有的优惠券，动态判断在当前商品及金额下是否满足条件
 	for _, uc := range userCoupons {
 		selectable := true
 		reason := ""
 		discount := 0.0
 
-		// 调用底层服务进行校验（传入当前购买的 productID 列表和总额）
-		// 提示：此处传入 totalAmount (商品总价) 还是 totalWithFreight 依公司业务规则而定
 		disc, err := services.ValidateUserCoupon(uc, totalAmount, []string{req.ProductID})
 		if err != nil {
 			selectable = false
@@ -215,7 +211,6 @@ func PreviewOrder(c *gin.Context) {
 			discount = disc
 		}
 
-		// 格式化金额说明描述
 		amountDesc := ""
 		switch uc.Coupon.Type {
 		case models.CouponTypeFullReduce:
@@ -224,6 +219,11 @@ func PreviewOrder(c *gin.Context) {
 			amountDesc = fmt.Sprintf("无门槛减%.2f元", uc.Coupon.ReduceAmount)
 		case models.CouponTypeDiscount:
 			amountDesc = fmt.Sprintf("%.1f折", uc.Coupon.DiscountRate*10)
+		}
+
+		status := 0
+		if selectable {
+			status = 1
 		}
 
 		couponListResp = append(couponListResp, PreviewCouponResponse{
@@ -235,14 +235,14 @@ func PreviewOrder(c *gin.Context) {
 			MinAmount:    uc.Coupon.FullAmount,
 			ValidStart:   uc.ValidStart.Format("2006-01-02 15:04:05"),
 			ValidEnd:     uc.ValidEnd.Format("2006-01-02 15:04:05"),
-			Selectable:   selectable,
+			Status:       status,
 			Reason:       reason,
 		})
 
-		// 核心策略：如果用户没传 couponId，在遍历过程中动态选出【满足条件且减免金额最大】的最佳券
+		// 自动选择最佳可用券（selectable且抵扣金额最大）
 		if req.CouponID == "" && selectable && discount > maxDiscountAmount {
 			maxDiscountAmount = discount
-			bestUserCouponID = uc.CouponID.String() // 或者是 uc.ID.String()，取决于前端下单时传模板ID还是用户持有券实例ID
+			bestUserCouponID = uc.ID.String() // 存储用户券实例ID
 		}
 	}
 
@@ -251,50 +251,48 @@ func PreviewOrder(c *gin.Context) {
 	selectedCouponID := ""
 
 	if req.CouponID != "" {
-		// 情况 A：用户在前端手动挑选/指定了某张券
 		selectedCouponID = req.CouponID
-		cid, err := strconv.ParseInt(req.CouponID, 10, 64)
+		userCouponID, err := strconv.ParseInt(req.CouponID, 10, 64)
 		if err != nil {
 			utils.Fail(c, "无效优惠券ID")
 			return
 		}
-
 		var targetUC models.UserCoupon
-		if err := database.DB.Where("user_id = ? AND coupon_id = ? AND status = ?", userID, cid, models.UserCouponUnused).
+		if err := database.DB.Where("coupon_id = ? AND user_id = ? AND status = ?", userCouponID, userID, models.UserCouponUnused).
 			Preload("Coupon").First(&targetUC).Error; err != nil {
 			utils.Fail(c, "指定的优惠券不存在或已不可用")
 			return
 		}
-
 		disc, err := services.ValidateUserCoupon(targetUC, totalAmount, []string{req.ProductID})
 		if err != nil {
-			utils.Fail(c, "不可使用该券: "+err.Error())
-			return
+			// utils.Fail(c, "不可使用该券: "+err.Error())
+			// return
+			discountAmount = disc
+		} else {
+			discountAmount = 0
 		}
-		discountAmount = disc
 	} else {
-		// 情况 B：用户未选券，使用刚才遍历计算出的最佳优惠券
 		if bestUserCouponID != "" {
 			selectedCouponID = bestUserCouponID
 			discountAmount = maxDiscountAmount
 		}
 	}
 
-	// ---------- 5. 金额汇总并输出 ----------
+	// ---------- 5. 金额汇总 ----------
 	finalAmount := totalWithFreight - discountAmount
 	if finalAmount < 0 {
 		finalAmount = 0
 	}
 
 	utils.Success(c, gin.H{
-		"items":            previewItems,     // 商品明细列表
-		"specs":            specSummaries,    // 规格汇总（按商品规格聚合）
-		"coupons":          couponListResp,   // 新增：返回所有的已领取优惠券列表及可用状态判断
-		"totalAmount":      totalAmount,      // 商品总金额（未含运费，未减优惠）
-		"freight":          freight,          // 运费金额
-		"discountAmount":   discountAmount,   // 优惠券抵扣金额
-		"actualAmount":     finalAmount,      // 实际支付金额（总金额+运费-优惠）
-		"defaultAddress":   addressResp,      // 用户默认地址对象（无地址时为null）
-		"selectedCouponId": selectedCouponID, // 当前选中的优惠券实例ID（自动最佳或用户指定）
+		"items":            previewItems,
+		"specs":            specSummaries,
+		"coupons":          couponListResp,
+		"totalAmount":      totalAmount,
+		"freight":          freight,
+		"discountAmount":   discountAmount,
+		"actualAmount":     finalAmount,
+		"defaultAddress":   addressResp,
+		"selectedCouponId": selectedCouponID,
 	})
 }
