@@ -171,46 +171,85 @@ func GetMyCoupons(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=[]models.Coupon}
 // @Router /api/v1/wx/coupon/product/{productId} [get]
 func GetProductCoupons(c *gin.Context) {
-	userID, _ := utils.GetUserID(c) // 可为0未登录
+	userID, _ := utils.GetUserID(c)
 	productIdStr := c.Param("productId")
-
 	now := time.Now()
-	var coupons []models.Coupon
 
-	// 查询已发布且在领券时间内的优惠券
+	var coupons []models.Coupon
 	query := database.DB.Where("publish_status = ?", models.PublishStatusPublished).
 		Where("receive_start <= ? AND receive_end >= ?", now, now)
-
-	// 筛选适用范围
-	// use_scope=1 全平台；use_scope=2 指定商品包含当前商品
 	query = query.Where("use_scope = ? OR (use_scope = ? AND find_in_set(?, product_ids) > 0)",
 		models.UseScopeAll, models.UseScopeSpec, productIdStr)
-
 	if err := query.Find(&coupons).Error; err != nil {
 		utils.Fail(c, "查询优惠券失败")
 		return
 	}
 
-	// 过滤已领完、用户已达上限的券
-	result := make([]models.Coupon, 0)
+	// 1. 批量获取当前用户对每张优惠券的已领取数量
+	receivedCountMap := make(map[utils.Int64Str]int64)
+	if userID != 0 {
+		// 临时结构体，用于接收 group by 结果
+		type UserCouponCount struct {
+			CouponID utils.Int64Str
+			Cnt      int64
+		}
+		var counts []UserCouponCount
+		err := database.DB.Model(&models.UserCoupon{}).
+			Where("user_id = ?", userID).
+			Select("coupon_id, count(*) as cnt").
+			Group("coupon_id").
+			Scan(&counts).Error
+		if err == nil {
+			for _, c := range counts {
+				receivedCountMap[c.CouponID] = c.Cnt
+			}
+		}
+	}
+
+	// 2. 构造返回结果，附加领取状态和剩余可领次数
+	type CouponDetail struct {
+		models.Coupon
+		IsReceived   bool  `json:"isReceived"`   // 是否已领取（至少一张）
+		RemainCanGet int64 `json:"remainCanGet"` // 还可领取张数，-1表示不限制
+	}
+	result := make([]CouponDetail, 0)
+
 	for _, coupon := range coupons {
-		// 库存检查
+		// 库存检查：总库存有限且已发数量已达上限时不展示
 		if coupon.TotalStock > 0 && coupon.ReceivedNum >= coupon.TotalStock {
 			continue
 		}
-		// 用户领取限制检查（如果用户已登录）
+
+		// 获取当前用户的已领数量
+		var receivedCnt int64 = 0
 		if userID != 0 {
-			var userCount int64
-			database.DB.Model(&models.UserCoupon{}).Where("user_id = ? AND coupon_id = ?", userID, coupon.ID).Count(&userCount)
-			if coupon.UserLimitType == 2 && userCount >= int64(coupon.UserLimitNum) {
-				continue
-			} else if coupon.UserLimitType == 3 && userCount >= 1 {
-				continue
-			}
-			// 新老用户限制（示例简单处理，可忽略）
-			// 可根据用户注册时间判断
+			receivedCnt = receivedCountMap[coupon.ID]
 		}
-		result = append(result, coupon)
+		isReceived := receivedCnt > 0
+
+		// 计算剩余可领次数（用户维度）
+		var remain int64 = -1 // 默认无限制
+		switch coupon.UserLimitType {
+		case 1: // 无限
+			remain = -1
+		case 2: // 限总量
+			remain = int64(coupon.UserLimitNum) - receivedCnt
+			if remain < 0 {
+				remain = 0
+			}
+		case 3: // 限1张
+			if receivedCnt >= 1 {
+				remain = 0
+			} else {
+				remain = 1
+			}
+		}
+
+		result = append(result, CouponDetail{
+			Coupon:       coupon,
+			IsReceived:   isReceived,
+			RemainCanGet: remain,
+		})
 	}
 
 	utils.Success(c, result)
