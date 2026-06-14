@@ -161,6 +161,14 @@ func GetMyCoupons(c *gin.Context) {
 	utils.Success(c, userCoupons)
 }
 
+// CouponDetail 优惠券详情（含用户领取状态）
+type CouponDetail struct {
+	models.Coupon
+	IsReceived   bool  `json:"isReceived"`   // 历史是否领过
+	RemainCanGet int64 `json:"remainCanGet"` // 还可领取次数（累计剩余）
+	Status       int   `json:"status"`       // 0-可领取 1-可使用 2-已达上限
+}
+
 // GetProductCoupons 获取商品可领取的优惠券列表（用户维度累计限制）
 // @Summary 获取商品可领优惠券
 // @Description 根据商品ID，返回当前可领取且适用于该商品的优惠券列表，并附带用户累计领取总数和剩余可领次数（基于累计次数限制）。
@@ -225,12 +233,6 @@ func GetProductCoupons(c *gin.Context) {
 		}
 	}
 
-	type CouponDetail struct {
-		models.Coupon
-		IsReceived   bool  `json:"isReceived"`   // 历史是否领过
-		RemainCanGet int64 `json:"remainCanGet"` // 还可领取次数（累计剩余）
-		Status       int   `json:"status"`       // 0-可领取 1-可使用 2-已达上限
-	}
 	result := make([]CouponDetail, 0)
 
 	for _, coupon := range coupons {

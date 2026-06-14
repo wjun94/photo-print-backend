@@ -26,18 +26,18 @@
 
 ## 🧰 技术栈
 
-| 组件           | 技术                                                         |
-| -------------- | ------------------------------------------------------------ |
-| 语言           | Go 1.26.3                                                    |
-| Web 框架       | [Gin](https://github.com/gin-gonic/gin)                      |
-| ORM            | [GORM](https://gorm.io/) + MySQL 驱动                        |
-| 数据库         | MySQL 8.0                                                    |
-| 认证           | JWT (golang-jwt/jwt) + bcrypt (管理员) / 微信 openid (小程序) |
-| 微信小程序     | 静默登录，通过 `code` 换取 `openid`                          |
-| API 文档       | [Swaggo](https://github.com/swaggo/swag) + Swagger UI        |
-| 容器化         | Docker + Docker Compose                                      |
-| 热重载开发     | [Air](https://github.com/cosmtrek/air)                       |
-| 文件存储       | 本地磁盘 (`./uploads`)                                       |
+| 组件       | 技术                                                          |
+| ---------- | ------------------------------------------------------------- |
+| 语言       | Go 1.26.3                                                     |
+| Web 框架   | [Gin](https://github.com/gin-gonic/gin)                       |
+| ORM        | [GORM](https://gorm.io/) + MySQL 驱动                         |
+| 数据库     | MySQL 8.0                                                     |
+| 认证       | JWT (golang-jwt/jwt) + bcrypt (管理员) / 微信 openid (小程序) |
+| 微信小程序 | 静默登录，通过 `code` 换取 `openid`                           |
+| API 文档   | [Swaggo](https://github.com/swaggo/swag) + Swagger UI         |
+| 容器化     | Docker + Docker Compose                                       |
+| 热重载开发 | [Air](https://github.com/cosmtrek/air)                        |
+| 文件存储   | 本地磁盘 (`./uploads`)                                        |
 
 ---
 
@@ -98,6 +98,7 @@ docker-compose up -d --build
 ```
 
 该命令会：
+
 - 启动 MySQL 8.0 容器（数据持久化）
 - 构建 Go 后端生产镜像（最终只包含二进制文件）
 - 挂载 `./uploads` 目录保存照片
@@ -221,6 +222,7 @@ tmp_dir = "tmp"
 如果你使用 `docker-compose` 启动的服务，数据库容器名称通常是 `photo-db`（生产环境）或 `photo-db-dev`（开发环境）。
 
 #### 1. 查看容器名称
+
 ```bash
 docker compose ps
 # 或开发环境
@@ -228,6 +230,7 @@ docker-compose -f docker-compose.dev.yml ps
 ```
 
 #### 2. 进入容器内的 MySQL 客户端
+
 ```bash
 # 生产环境（默认密码 123456）
 docker exec -it photo-db mysql -uroot -p123456
@@ -235,14 +238,18 @@ docker exec -it photo-db mysql -uroot -p123456
 # 开发环境（容器名可能为 photo-db-dev）
 docker exec -it photo-db-dev mysql -uroot -p123456
 ```
+
 > 请根据 `docker-compose.yml` 中 `MYSQL_ROOT_PASSWORD` 的实际设置修改密码。
 
 #### 3. 切换数据库并查看表
+
 ```sql
 USE photoprint;
 SHOW TABLES;
 ```
+
 输出示例：
+
 ```
 +---------------------+
 | Tables_in_photoprint|
@@ -256,6 +263,7 @@ SHOW TABLES;
 ```
 
 #### 4. 查询具体表内容
+
 ```sql
 SELECT * FROM admins;                         -- 后台管理员
 SELECT * FROM wx_users;                       -- 小程序用户
@@ -264,6 +272,7 @@ SELECT * FROM order_items;
 ```
 
 #### 5. 退出客户端
+
 ```sql
 EXIT;
 ```
@@ -271,6 +280,7 @@ EXIT;
 ### 方式二：使用宿主机 MySQL 客户端（如果映射了 3306 端口）
 
 如果你的 `docker-compose.yml` 中 `db` 服务配置了 `ports: - "3306:3306"`，可以使用本机 MySQL 客户端连接：
+
 ```bash
 mysql -h 127.0.0.1 -P 3306 -uroot -p123456
 ```
@@ -278,6 +288,7 @@ mysql -h 127.0.0.1 -P 3306 -uroot -p123456
 ### 方式三：使用图形化工具（如 TablePlus、Navicat、DBeaver）
 
 连接信息：
+
 - **Host**: `localhost` 或 `127.0.0.1`
 - **Port**: `3306`（或你映射的端口）
 - **User**: `root`
@@ -293,11 +304,11 @@ mysql -h 127.0.0.1 -P 3306 -uroot -p123456
 
 ### 页面访问
 
-| 路径       | 说明                     |
-| ---------- | ------------------------ |
-| `/admin`   | 后台管理页面（需登录）   |
-| `/swagger/*` | Swagger UI 文档         |
-| `/uploads/*` | 访问已上传的照片文件     |
+| 路径         | 说明                   |
+| ------------ | ---------------------- |
+| `/admin`     | 后台管理页面（需登录） |
+| `/swagger/*` | Swagger UI 文档        |
+| `/uploads/*` | 访问已上传的照片文件   |
 
 完整交互式文档请访问 `http://localhost:8080/swagger/index.html`。
 
@@ -320,23 +331,39 @@ mysql -h 127.0.0.1 -P 3306 -uroot -p123456
 
 ### 生产环境 (`docker-compose.yml`)
 
-| 变量名               | 默认值               | 说明                                 |
-| -------------------- | -------------------- | ------------------------------------ |
-| `DB_HOST`            | `db`                 | MySQL 主机名                         |
-| `DB_PORT`            | `3306`               | 端口                                 |
-| `DB_USER`            | `root`               | 用户名                               |
-| `DB_PASSWORD`        | `123456`             | 密码                                 |
-| `DB_NAME`            | `photoprint`         | 数据库名                             |
-| `SERVER_PORT`        | `8080`               | 后端监听端口                         |
-| `JWT_SECRET`         | `your-secret-key`    | JWT 签名密钥（生产必须修改）         |
-| `WECHAT_APP_ID`      | (空)                 | 微信小程序 AppID（小程序登录需要）   |
-| `WECHAT_APP_SECRET`  | (空)                 | 微信小程序 AppSecret（小程序登录需要）|
+| 变量名              | 默认值            | 说明                                   |
+| ------------------- | ----------------- | -------------------------------------- |
+| `DB_HOST`           | `db`              | MySQL 主机名                           |
+| `DB_PORT`           | `3306`            | 端口                                   |
+| `DB_USER`           | `root`            | 用户名                                 |
+| `DB_PASSWORD`       | `123456`          | 密码                                   |
+| `DB_NAME`           | `photoprint`      | 数据库名                               |
+| `SERVER_PORT`       | `8080`            | 后端监听端口                           |
+| `JWT_SECRET`        | `your-secret-key` | JWT 签名密钥（生产必须修改）           |
+| `WECHAT_APP_ID`     | (空)              | 微信小程序 AppID（小程序登录需要）     |
+| `WECHAT_APP_SECRET` | (空)              | 微信小程序 AppSecret（小程序登录需要） |
 
 ### 开发环境 (`docker-compose.dev.yml`)
 
 开发环境同样支持以上变量，且额外挂载了源码目录。
 
 ---
+
+### 本地开发内网穿透
+
+全局安装 Localtunnel（需要 NodeJS）使其可在任何地方访问：
+
+```bash
+npm install -g localtunnel
+```
+
+在本地端口（例如 http://localhost:8000）上启动一个 Web 服务器，并使用命令行界面请求与本地服务器建立隧道：
+
+```bash
+lt --port 8000
+```
+
+您将收到一个 URL，例如 https://gqgh.localtunnel.me，只要您的本地 lt 实例保持活动状态，您就可以与任何人共享此 URL。所有请求都将路由到指定端口上的本地服务。
 
 ## 🔒 安全注意事项
 

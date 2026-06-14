@@ -32,6 +32,7 @@ func main() {
 	}
 	utils.InitSnowflake(machineID)
 	utils.InitQiniu() // 新增七牛云
+	utils.InitWechatPay()
 	database.InitDB()
 	// 在这里启动你的定时任务
 	jobs.StartAutoConfirmJob()
@@ -86,6 +87,10 @@ func main() {
 				appGroup.POST("/order/pay/success", app.PaySuccess) // 支付成功
 				appGroup.POST("/order/confirm", app.ConfirmReceipt) // 确认收货
 				appGroup.POST("/order/cancel", app.CancelOrder)     // 取消订单
+
+				// 微信支付
+				appGroup.POST("/pay/order", app.PayOrder)
+				appGroup.POST("/pay/notify", app.PayNotify)
 
 				// 地址
 				appGroup.GET("/address/list", app.GetAddressList)

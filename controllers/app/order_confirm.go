@@ -207,9 +207,7 @@ func SubmitOrder(c *gin.Context) {
 		Remark:         req.Remark,
 		Status:         models.OrderStatusPending,
 	}
-	fmt.Println("----------")
-	fmt.Println(usedUserCouponID)
-	fmt.Println(req.CouponID)
+
 	if usedUserCouponID != 0 {
 		order.CouponID = utils.Int64Str(usedUserCouponID) // 存储用户优惠券实例ID
 	}

@@ -30,8 +30,17 @@ type Config struct {
 	UploadPrefixAdmin  string // 开发环境上传目录前缀，如 "upload-admin-dev/"
 	UploadPrefixQrcode string // 开发环境上传目录前缀，如 "upload-admin/"
 
+	// 小程序配置
 	AppId     string
 	AppSecret string
+	// 微信支付配置
+	WechatPayMchID          string // 商户号
+	WechatPayApiV3Key       string // APIv3密钥
+	WechatPaySerialNo       string // 商户证书序列号
+	WechatPayPrivateKeyPath string // 商户私钥路径
+	WechatPayNotifyURL      string // 支付结果回调地址
+	PublicKeyPath           string // 商户使用微信支付公钥验签
+	PublicKeySerialNo       string // 公钥序列号
 }
 
 var AppConfig *Config
@@ -63,6 +72,15 @@ func LoadConfig() {
 	AppConfig.UploadPrefixQrcode = getEnv("UPLOAD_PREFIX_QRCODE", "")
 	AppConfig.AppId = getEnv("APPID", "")
 	AppConfig.AppSecret = getEnv("APPSECRET", "")
+
+	// 微信支付
+	AppConfig.WechatPayMchID = getEnv("WECHATPAYMCHID", "")
+	AppConfig.WechatPayApiV3Key = getEnv("WECHATAPIV3", "")
+	AppConfig.WechatPayPrivateKeyPath = getEnv("WECHATPAYPRIVATEKEYPATH", "")
+	AppConfig.WechatPaySerialNo = getEnv("WECHATPAYPRIVATECERT", "")
+	AppConfig.PublicKeyPath = getEnv("PUBLICKEYPATH", "")
+	AppConfig.PublicKeySerialNo = getEnv("PUBLICKEYSERIALNO", "")
+	AppConfig.WechatPayNotifyURL = getEnv("WECHATPAYNOTIFYURL", "")
 }
 
 func getEnv(key, fallback string) string {
