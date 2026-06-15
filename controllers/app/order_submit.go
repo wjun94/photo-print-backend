@@ -148,7 +148,7 @@ func SubmitOrder(c *gin.Context) {
 		if coupon.UseScope == models.UseScopeAll {
 			scopeOK = true
 		} else if coupon.UseScope == models.UseScopeSpec {
-			productIDs := strings.Split(coupon.ProductIDs, ",")
+			productIDs := strings.Split(coupon.ProductIds, ",")
 			for _, pid := range productIDs {
 				if strings.TrimSpace(pid) == req.ProductID {
 					scopeOK = true
@@ -254,8 +254,6 @@ func SubmitOrder(c *gin.Context) {
 				return err
 			}
 		}
-		fmt.Println("----------2")
-		fmt.Println(usedUserCouponID)
 		// 更新用户优惠券状态（使用用户优惠券实例ID）
 		if usedUserCouponID != 0 {
 			result := tx.Model(&models.UserCoupon{}).

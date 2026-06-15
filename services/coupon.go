@@ -22,7 +22,7 @@ func ValidateCoupon(couponID int64, userID int64, totalAmount float64) (discount
 		return 0, coupon, fmt.Errorf("优惠券模板无效")
 	}
 	// 使用范围校验（示例简化，可根据业务扩展）
-	if coupon.UseScope == models.UseScopeSpec && coupon.ProductIDs != "" {
+	if coupon.UseScope == models.UseScopeSpec && coupon.ProductIds != "" {
 		// 可在此处校验订单中的商品是否都在指定商品列表中
 		// 此处省略
 	}
@@ -73,7 +73,7 @@ func ValidateUserCoupon(userCoupon models.UserCoupon, totalAmount float64, produ
 		if len(productIDs) == 0 {
 			return 0, fmt.Errorf("订单无商品，无法使用该优惠券")
 		}
-		allowed := strings.Split(coupon.ProductIDs, ",")
+		allowed := strings.Split(coupon.ProductIds, ",")
 		allowedMap := make(map[string]bool)
 		for _, id := range allowed {
 			allowedMap[id] = true

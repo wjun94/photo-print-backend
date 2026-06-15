@@ -70,7 +70,7 @@ func ReceiveCoupon(c *gin.Context) {
 			return
 		}
 		if coupon.UseScope == models.UseScopeSpec {
-			if !strings.Contains(","+coupon.ProductIDs+",", ","+req.ProductID+",") {
+			if !strings.Contains(","+coupon.ProductIds+",", ","+req.ProductID+",") {
 				utils.Fail(c, "该优惠券不适用于当前商品")
 				return
 			}

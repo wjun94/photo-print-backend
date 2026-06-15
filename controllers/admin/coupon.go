@@ -20,7 +20,7 @@ type CreateCouponReq struct {
 	DiscountRate   float64    `json:"discountRate"`
 	MaxReduce      float64    `json:"maxReduce"`
 	UseScope       int        `json:"useScope" binding:"required,min=1,max=2"`
-	ProductIDs     string     `json:"productIds"`
+	ProductIds     string     `json:"productIds"`
 	TimeType       int        `json:"timeType" binding:"required,min=1,max=2"`
 	ValidStart     *time.Time `json:"validStart"`
 	ValidEnd       *time.Time `json:"validEnd"`
@@ -109,7 +109,7 @@ func CreateCoupon(c *gin.Context) {
 		DiscountRate:   req.DiscountRate,
 		MaxReduce:      req.MaxReduce,
 		UseScope:       models.UseScope(req.UseScope),
-		ProductIDs:     req.ProductIDs,
+		ProductIds:     req.ProductIds,
 		TimeType:       models.TimeType(req.TimeType),
 		ValidStart:     req.ValidStart,
 		ValidEnd:       req.ValidEnd,
@@ -206,7 +206,7 @@ type UpdateCouponReq struct {
 	DiscountRate   *float64 `json:"discountRate"`
 	MaxReduce      *float64 `json:"maxReduce"`
 	UseScope       *int     `json:"useScope"`
-	ProductIDs     *string  `json:"productIds"`
+	ProductIds     *string  `json:"productIds"`
 	TimeType       *int     `json:"timeType"`
 	ValidStart     *string  `json:"validStart"`
 	ValidEnd       *string  `json:"validEnd"`
@@ -272,8 +272,8 @@ func UpdateCoupon(c *gin.Context) {
 	if req.UseScope != nil {
 		updates["use_scope"] = *req.UseScope
 	}
-	if req.ProductIDs != nil {
-		updates["product_ids"] = *req.ProductIDs
+	if req.ProductIds != nil {
+		updates["product_ids"] = *req.ProductIds
 	}
 	if req.TimeType != nil {
 		updates["time_type"] = *req.TimeType

@@ -53,7 +53,7 @@ type Coupon struct {
 	DiscountRate   float64        `gorm:"type:decimal(3,2);default:1" json:"discountRate"`  // 折扣比例 0.8=8折，折扣券生效
 	MaxReduce      float64        `gorm:"type:decimal(10,2);default:0" json:"maxReduce"`    // 折扣券最高减免金额，0代表无上限
 	UseScope       UseScope       `gorm:"not null" json:"useScope"`                         // 使用商品范围枚举
-	ProductIDs     string         `gorm:"type:text" json:"productIds"`                      // 指定商品ID列表，多个用英文逗号分隔，UseScope=2时生效
+	ProductIds     string         `gorm:"type:text" json:"productIds"`                      // 指定商品ID列表，多个用英文逗号分隔，UseScope=2时生效
 	TimeType       TimeType       `gorm:"not null" json:"timeType"`                         // 有效期类型枚举
 	ValidStart     *time.Time     `json:"validStart,omitempty"`                             // 固定有效期-开始时间，TimeType=1必填
 	ValidEnd       *time.Time     `json:"validEnd,omitempty"`                               // 固定有效期-结束时间，TimeType=1必填
