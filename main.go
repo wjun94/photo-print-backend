@@ -73,17 +73,22 @@ func main() {
 			appGroup := authorized.Group("/")
 			appGroup.Use(middleware.RequireRole("wx"))
 			{
-				appGroup.GET("/user/info", app.GetUserInfo)               // 用户惜
-				appGroup.POST("/bind", app.BindInviter)                   // 绑定上级接口
+				// 用户与社交关系
+				appGroup.GET("/user/info", app.GetUserInfo) // 用户惜
+				appGroup.POST("/bind", app.BindInviter)     // 绑定上级接口
+
+				// 媒体/文件上传
 				appGroup.POST("/upload/single", common.UploadSingleImage) // 单图（新增）
 				appGroup.POST("/upload/batch", common.UploadImages)       // 批量上传(没用到)
 
+				// 工具类
 				appGroup.GET("/qrcodes", app.GetQRCodes)
 
+				// 订单业务 (统一使用 /order 根路径)
 				appGroup.POST("/order/preview", app.PreviewOrder)
 				appGroup.POST("/order/submit", app.SubmitOrder)
-				appGroup.GET("/orders/:id", app.GetOrderDetail)
-				appGroup.GET("/orders/list", app.GetWxOrders)       // 我的订单列表
+				appGroup.GET("/order/:id", app.GetOrderDetail)
+				appGroup.GET("/order/list", app.GetWxOrders)        // 我的订单列表
 				appGroup.POST("/order/pay/success", app.PaySuccess) // 支付成功
 				appGroup.POST("/order/confirm", app.ConfirmReceipt) // 确认收货
 				appGroup.POST("/order/cancel", app.CancelOrder)     // 取消订单
@@ -92,7 +97,7 @@ func main() {
 				appGroup.POST("/pay/order", app.PayOrder)
 				appGroup.POST("/pay/notify", app.PayNotify)
 
-				// 地址
+				// 收货地址管理 (统一使用 /address)
 				appGroup.GET("/address/list", app.GetAddressList)
 				appGroup.GET("/address/:id", app.GetAddressDetail)
 				appGroup.POST("/address", app.AddAddress)
@@ -100,11 +105,12 @@ func main() {
 				appGroup.DELETE("/address/:id", app.DeleteAddress)
 				appGroup.PUT("/address/:id/default", app.SetDefaultAddress)
 
+				// 分销/佣金
 				appGroup.GET("/commission/total", app.GetTotalCommission)
 				appGroup.GET("/commission/list", app.GetCommissionList)
 				appGroup.GET("/commission/friends", app.GetInvitedFriends)
 
-				// 优惠券
+				// 优惠券业务
 				appGroup.POST("/coupon/receive", app.ReceiveCoupon)
 				appGroup.GET("/coupon/list", app.GetMyCoupons)
 				appGroup.GET("/coupon/product/:productId", app.GetProductCoupons)
@@ -114,23 +120,29 @@ func main() {
 			adminGroup := authorized.Group("/admin")
 			adminGroup.Use(middleware.RequireRole("admin"))
 			{
+				// 后台媒体/文件上传
 				adminGroup.POST("/upload/single", common.UploadSingleAdminImage) // 单图（新增）
 				adminGroup.POST("/upload/batch", common.UploadAdminImages)       // 批量上传(没用到)
 
+				// 二维码管理
 				adminGroup.POST("/qrcode/upload", admin.UploadQRCodes)
 				adminGroup.GET("/qrcodes", app.GetQRCodes)
 
+				// 数据大屏 / 看板
 				adminGroup.GET("/dashboard/overview", admin.GetOverview)
 				adminGroup.GET("/dashboard/trend", admin.GetTrend)
 
+				// 管理员信息
 				adminGroup.GET("/info", admin.GetAdminInfo)
 
-				adminGroup.GET("/orders", admin.GetOrderList)
-				adminGroup.GET("/orders/:id", admin.GetOrderDetail)
-				adminGroup.PUT("/orders/:id/status", admin.UpdateOrderStatus)
+				// 订单管理
+				adminGroup.GET("/order", admin.GetOrderList)
+				adminGroup.GET("/order/:id", admin.GetOrderDetail)
+				adminGroup.PUT("/order/:id/status", admin.UpdateOrderStatus)
 				adminGroup.POST("/order/ship", admin.ShipOrder)              // 发货
 				adminGroup.POST("/order/complete", admin.AdminCompleteOrder) // 完成订单
 
+				// 微信用户管理
 				adminGroup.GET("/wx-users", admin.GetWxUserList)
 				adminGroup.PUT("/wx-users/:id/status", admin.SetUserStatus)
 
@@ -142,15 +154,16 @@ func main() {
 				adminGroup.PUT("/products/:id/status", admin.UpdateProductStatus)
 				adminGroup.DELETE("/products/:id", admin.DeleteProduct)
 
+				// 分销分润配置
 				adminGroup.POST("/commission/ratio", admin.SetCommissionRatio)
 				adminGroup.GET("/commission/ratio", admin.GetCommissionRatio)
 
-				// 优惠券管理
+				// 优惠券管理营销
 				adminGroup.POST("/coupons", admin.CreateCoupon)
-				adminGroup.GET("/coupons", admin.GetCouponList)
-				adminGroup.GET("/coupons/:id", admin.GetCouponDetail)
-				adminGroup.PUT("/coupons/:id", admin.UpdateCoupon)
-				adminGroup.DELETE("/coupons/:id", admin.DeleteCoupon)
+				adminGroup.GET("/coupon", admin.GetCouponList)
+				adminGroup.GET("/coupon/:id", admin.GetCouponDetail)
+				adminGroup.PUT("/coupon/:id", admin.UpdateCoupon)
+				adminGroup.DELETE("/coupon/:id", admin.DeleteCoupon)
 			}
 		}
 	}
