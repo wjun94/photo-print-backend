@@ -28,7 +28,25 @@ type AddressListResponse struct {
 	DistrictName string `json:"districtName"`
 }
 
+// AddressListData 地址列表分页响应数据
+type AddressListData struct {
+	List  []AddressListResponse `json:"list"`
+	Total int64                 `json:"total"`
+	Page  int                   `json:"page"`
+	Size  int                   `json:"size"`
+}
+
 // GetAddressList 获取当前用户的收货地址列表（分页）
+// @Summary 获取地址列表
+// @Description 分页获取当前用户的收货地址列表，默认按默认地址优先、创建时间倒序排列
+// @Tags 地址管理
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页数量" default(10)
+// @Success 200 {object} utils.Response{data=AddressListData} "成功返回地址列表"
+// @Failure 401 {object} utils.Response "未登录"
+// @Router /api/v1/wx/address [get]
 func GetAddressList(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -63,15 +81,25 @@ func GetAddressList(c *gin.Context) {
 		})
 	}
 
-	utils.Success(c, gin.H{
-		"list":  resp,
-		"total": total,
-		"page":  page,
-		"size":  size,
+	utils.Success(c, AddressListData{
+		List:  resp,
+		Total: total,
+		Page:  page,
+		Size:  size,
 	})
 }
 
 // AddAddress 新增地址
+// @Summary 新增地址
+// @Description 添加一个新的收货地址，如果设置为默认地址，则自动清除其他默认地址
+// @Tags 地址管理
+// @Accept json
+// @Produce json
+// @Param request body AddressReq true "地址信息（ID字段可忽略）"
+// @Success 200 {object} utils.Response{data=models.Address} "新增成功，返回完整地址对象"
+// @Failure 400 {object} utils.Response "参数错误"
+// @Failure 401 {object} utils.Response "未登录"
+// @Router /api/v1/wx/address [post]
 func AddAddress(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -106,6 +134,18 @@ func AddAddress(c *gin.Context) {
 }
 
 // UpdateAddress 编辑地址
+// @Summary 编辑地址
+// @Description 根据ID修改收货地址信息，若设置为默认地址则自动清除其他默认地址
+// @Tags 地址管理
+// @Accept json
+// @Produce json
+// @Param id path string true "地址ID"
+// @Param request body AddressReq true "地址信息（ID字段会被忽略）"
+// @Success 200 {object} utils.Response "更新成功"
+// @Failure 400 {object} utils.Response "参数错误"
+// @Failure 401 {object} utils.Response "未登录"
+// @Failure 404 {object} utils.Response "地址不存在"
+// @Router /api/v1/wx/address/{id} [put]
 func UpdateAddress(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -150,6 +190,17 @@ func UpdateAddress(c *gin.Context) {
 }
 
 // DeleteAddress 删除地址
+// @Summary 删除地址
+// @Description 根据ID删除指定的收货地址
+// @Tags 地址管理
+// @Accept json
+// @Produce json
+// @Param id path string true "地址ID"
+// @Success 200 {object} utils.Response "删除成功"
+// @Failure 400 {object} utils.Response "无效ID"
+// @Failure 401 {object} utils.Response "未登录"
+// @Failure 404 {object} utils.Response "地址不存在"
+// @Router /api/v1/wx/address/{id} [delete]
 func DeleteAddress(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -171,6 +222,17 @@ func DeleteAddress(c *gin.Context) {
 }
 
 // SetDefaultAddress 设置默认地址
+// @Summary 设置默认地址
+// @Description 将指定地址设为默认地址，同时清除其他默认地址
+// @Tags 地址管理
+// @Accept json
+// @Produce json
+// @Param id path string true "地址ID"
+// @Success 200 {object} utils.Response "设置成功"
+// @Failure 400 {object} utils.Response "无效ID"
+// @Failure 401 {object} utils.Response "未登录"
+// @Failure 404 {object} utils.Response "地址不存在"
+// @Router /api/v1/wx/address/{id}/default [put]
 func SetDefaultAddress(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -197,6 +259,17 @@ func SetDefaultAddress(c *gin.Context) {
 }
 
 // GetAddressDetail 获取单个地址详情
+// @Summary 获取地址详情
+// @Description 根据ID获取指定收货地址的详细信息
+// @Tags 地址管理
+// @Accept json
+// @Produce json
+// @Param id path string true "地址ID"
+// @Success 200 {object} utils.Response{data=models.Address} "成功返回地址详情"
+// @Failure 400 {object} utils.Response "无效ID"
+// @Failure 401 {object} utils.Response "未登录"
+// @Failure 404 {object} utils.Response "地址不存在"
+// @Router /api/v1/wx/address/{id} [get]
 func GetAddressDetail(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {

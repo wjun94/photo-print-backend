@@ -27,7 +27,7 @@ type WxLoginReq struct {
 // @Accept json
 // @Produce json
 // @Param login body WxLoginReq true "登录请求（含inviteCode）"
-// @Success 200 {object} utils.Response{data=object{token=string,userId=string}}
+// @Success 200 {object} utils.Response{data=object{token=string,userId=string,isNew=bool}}
 // @Router /api/v1/wx/login [post]
 func WxLogin(c *gin.Context) {
 	var req WxLoginReq
