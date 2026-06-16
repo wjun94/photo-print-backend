@@ -11,11 +11,24 @@ import (
 	"gorm.io/gorm"
 )
 
+// CancelOrderReq 取消订单请求参数
+type CancelOrderReq struct {
+	OrderID string `json:"orderId" binding:"required"` // 订单ID
+}
+
 // CancelOrder 用户取消订单（仅限待付款或已支付未发货状态，取消后自动恢复库存）
+// @Summary 取消订单
+// @Description 用户取消订单，仅限待付款或已支付未发货状态，取消后自动恢复库存
+// @Tags 订单
+// @Accept json
+// @Produce json
+// @Param request body CancelOrderReq true "取消订单请求"
+// @Success 200 {object} utils.Response "取消成功"
+// @Failure 400 {object} utils.Response "参数错误或状态不允许取消"
+// @Failure 404 {object} utils.Response "订单不存在"
+// @Router /api/v1/wx/order/cancel [post]
 func CancelOrder(c *gin.Context) {
-	var req struct {
-		OrderID string `json:"orderId" binding:"required"`
-	}
+	var req CancelOrderReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Fail(c, "参数错误")
 		return
