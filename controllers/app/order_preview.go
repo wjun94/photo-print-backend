@@ -62,6 +62,19 @@ type PreviewCouponResponse struct {
 	Discount     float64 `json:"discount"`     // 该券在当前订单可减免的金额
 }
 
+// PreviewOrderResponseData 订单预览响应数据
+type PreviewOrderResponseData struct {
+	Items            []PreviewItemResponse        `json:"items"`
+	Specs            []models.SpecSummaryResponse `json:"specs"`
+	Coupons          []PreviewCouponResponse      `json:"coupons"`
+	TotalAmount      float64                      `json:"totalAmount"`
+	Freight          float64                      `json:"freight"`
+	DiscountAmount   float64                      `json:"discountAmount"`
+	ActualAmount     float64                      `json:"actualAmount"`
+	DefaultAddress   interface{}                  `json:"defaultAddress"` // 或定义为 AddressResponse 结构体
+	SelectedCouponId string                       `json:"selectedCouponId"`
+}
+
 // PreviewOrder 确认订单页面预览（支持优惠券自动选最佳）
 // @Summary 订单预览
 // @Description 计算商品总金额、运费，返回可用的优惠券列表（含每张券可优惠金额），自动选择最佳券或使用用户指定券
@@ -69,19 +82,7 @@ type PreviewCouponResponse struct {
 // @Accept json
 // @Produce json
 // @Param request body PreviewOrderReq true "预览请求"
-//
-//	@Success 200 {object} utils.Response{data=object{
-//	   items=[]PreviewItemResponse,
-//	   specs=[]models.SpecSummaryResponse,
-//	   coupons=[]PreviewCouponResponse,
-//	   totalAmount=float64,
-//	   freight=float64,
-//	   discountAmount=float64,
-//	   actualAmount=float64,
-//	   defaultAddress=object,
-//	   selectedCouponId=string
-//	}}
-//
+// @Success 200 {object} utils.Response{data=PreviewOrderResponseData} "成功返回预览数据"
 // @Router /api/v1/wx/order/preview [post]
 func PreviewOrder(c *gin.Context) {
 	// 获取当前登录用户ID
@@ -351,15 +352,15 @@ func PreviewOrder(c *gin.Context) {
 	}
 
 	// ---------- 4. 返回结果 ----------
-	utils.Success(c, gin.H{
-		"items":            previewItems,         // 商品预览列表，每个元素包含商品ID、名称、规格、价格、数量、小计、图片URL
-		"specs":            specSummaries,        // 规格汇总数组，每个元素包含商品ID、商品名称、规格ID、规格名称、单价、总数量、总小计、图片URL
-		"coupons":          couponList,           // 用户可用优惠券列表，每个元素包含用户券ID、模板ID、名称、满减门槛、减额、折扣率、类型、优惠文案、最低消费、有效期、状态、不可用原因、可优惠金额
-		"totalAmount":      totalAmount,          // 商品总金额（不含运费）
-		"freight":          freight,              // 运费金额
-		"discountAmount":   finalDiscount,        // 最终使用的优惠券减免金额
-		"actualAmount":     finalAmount,          // 实付金额 = 商品总金额 + 运费 - 优惠金额
-		"defaultAddress":   addressResp,          // 用户默认收货地址，包含地址ID、收件人、手机号、省市区名称、详细地址、门牌号
-		"selectedCouponId": selectedUserCouponID, // 最终选中的用户优惠券实例ID，若未使用任何券则为空字符串
+	utils.Success(c, PreviewOrderResponseData{
+		Items:            previewItems,         // 商品预览列表，每个元素包含商品ID、名称、规格、价格、数量、小计、图片URL
+		Specs:            specSummaries,        // 规格汇总数组，每个元素包含商品ID、商品名称、规格ID、规格名称、单价、总数量、总小计、图片URL
+		Coupons:          couponList,           // 用户可用优惠券列表，每个元素包含用户券ID、模板ID、名称、满减门槛、减额、折扣率、类型、优惠文案、最低消费、有效期、状态、不可用原因、可优惠金额
+		TotalAmount:      totalAmount,          // 商品总金额（不含运费）
+		Freight:          freight,              // 运费金额
+		DiscountAmount:   finalDiscount,        // 最终使用的优惠券减免金额
+		ActualAmount:     finalAmount,          // 实付金额 = 商品总金额 + 运费 - 优惠金额
+		DefaultAddress:   addressResp,          // 用户默认收货地址，包含地址ID、收件人、手机号、省市区名称、详细地址、门牌号
+		SelectedCouponId: selectedUserCouponID, // 最终选中的用户优惠券实例ID，若未使用任何券则为空字符串
 	})
 }
