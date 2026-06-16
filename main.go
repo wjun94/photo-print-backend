@@ -160,10 +160,10 @@ func main() {
 
 				// 优惠券管理营销
 				adminGroup.POST("/coupons", admin.CreateCoupon)
-				adminGroup.GET("/coupon", admin.GetCouponList)
-				adminGroup.GET("/coupon/:id", admin.GetCouponDetail)
-				adminGroup.PUT("/coupon/:id", admin.UpdateCoupon)
-				adminGroup.DELETE("/coupon/:id", admin.DeleteCoupon)
+				adminGroup.GET("/coupons", admin.GetCouponList)
+				adminGroup.GET("/coupons/:id", admin.GetCouponDetail)
+				adminGroup.PUT("/coupons/:id", admin.UpdateCoupon)
+				adminGroup.DELETE("/coupons/:id", admin.DeleteCoupon)
 			}
 		}
 	}
