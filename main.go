@@ -136,11 +136,11 @@ func main() {
 				adminGroup.GET("/info", admin.GetAdminInfo)
 
 				// 订单管理
-				adminGroup.GET("/order", admin.GetOrderList)
-				adminGroup.GET("/order/:id", admin.GetOrderDetail)
-				adminGroup.PUT("/order/:id/status", admin.UpdateOrderStatus)
-				adminGroup.POST("/order/ship", admin.ShipOrder)              // 发货
-				adminGroup.POST("/order/complete", admin.AdminCompleteOrder) // 完成订单
+				adminGroup.GET("/orders", admin.GetOrderList)
+				adminGroup.GET("/orders/:id", admin.GetOrderDetail)
+				adminGroup.PUT("/orders/:id/status", admin.UpdateOrderStatus)
+				adminGroup.POST("/orders/ship", admin.ShipOrder)              // 发货
+				adminGroup.POST("/orders/complete", admin.AdminCompleteOrder) // 完成订单
 
 				// 微信用户管理
 				adminGroup.GET("/wx-users", admin.GetWxUserList)
