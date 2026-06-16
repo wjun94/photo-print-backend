@@ -40,6 +40,8 @@ func main() {
 	jobs.StartAutoCloseOrderJob()
 	// 启动删除已取消订单
 	jobs.StartDeleteCancelledOrdersJob()
+	// 定时清理优惠券
+	jobs.InitCronJobs()
 
 	r := gin.Default()
 	r.Use(middleware.Cors())

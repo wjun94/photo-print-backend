@@ -130,35 +130,71 @@ func ReceiveCoupon(c *gin.Context) {
 	utils.Success(c, nil)
 }
 
-// GetMyCoupons 获取当前用户可用的优惠券
+// GetMyCoupons 我的优惠券（自动返回未使用券，并按是否过期动态设置状态）
 // @Summary 我的优惠券
 // @Tags 优惠券
-// @Param status query int false "状态 0未使用 1已使用 2已过期" default(0)
-// @Success 200 {object} utils.Response{data=[]models.UserCoupon}
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页条数" default(10)
+// @Success 200 {object} utils.Response{data=object{list=[]models.UserCoupon,total=int,page=int,pageSize=int}}
 // @Router /api/v1/wx/coupon/list [get]
 func GetMyCoupons(c *gin.Context) {
 	userID, _ := utils.GetUserID(c)
-	statusStr := c.DefaultQuery("status", "0")
-	status, _ := strconv.Atoi(statusStr)
+	now := time.Now()
+	sevenDaysAgo := now.AddDate(0, 0, -7)
+
+	// 1. 解析分页参数
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	offset := (page - 1) * pageSize
 
 	var userCoupons []models.UserCoupon
-	now := time.Now()
-	// 先查出用户优惠券，然后过滤已过期的状态
-	err := database.DB.Where("user_id = ? AND status = ?", userID, status).Find(&userCoupons).Error
+	var total int64
+
+	// 2. 构建基础查询（不包含分页）
+	baseQuery := database.DB.Model(&models.UserCoupon{}).
+		Where("user_id = ? AND status IN (?) AND valid_end >= ?", userID, []int{0, 2}, sevenDaysAgo)
+
+	// 3. 获取总数（用于前端分页）
+	if err := baseQuery.Count(&total).Error; err != nil {
+		utils.Fail(c, "查询总数失败")
+		return
+	}
+
+	// 4. 执行分页查询（预加载关联的 Coupon，并按领取时间倒序）
+	err := baseQuery.
+		Preload("Coupon").
+		Order("received_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&userCoupons).Error
+
 	if err != nil {
 		utils.Fail(c, "查询失败")
 		return
 	}
 
-	// 对于未使用的优惠券，自动将过期状态更新（非持久，前端显示用）
-	if status == 0 {
-		for i, uc := range userCoupons {
-			if uc.ValidEnd.Before(now) && uc.Status == models.UserCouponUnused {
-				userCoupons[i].Status = models.UserCouponExpired
-			}
+	// 5. 动态设置状态（过期状态在内存中计算）
+	for i := range userCoupons {
+		if userCoupons[i].ValidEnd.Before(now) {
+			userCoupons[i].Status = models.UserCouponExpired // 2
+		} else {
+			userCoupons[i].Status = models.UserCouponUnused // 0
 		}
 	}
-	utils.Success(c, userCoupons)
+
+	// 6. 返回分页数据（包含列表、总数、当前页码、每页大小）
+	utils.Success(c, gin.H{
+		"list":     userCoupons,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+	})
 }
 
 // CouponDetail 优惠券详情（含用户领取状态）
