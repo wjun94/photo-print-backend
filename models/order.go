@@ -41,16 +41,14 @@ type Order struct {
 	ShippedAt *utils.LocalTime `gorm:"type:datetime" json:"shippedAt,omitempty"` // 订单发货时间
 	CancelAt  *utils.LocalTime `gorm:"type:datetime" json:"cancelAt,omitempty"`  // 订单取消时间
 
-	Remark       string                `json:"remark"`                                               // 可选备注
-	Amount       float64               `gorm:"type:decimal(10,2);not null" json:"amount"`            // 商品总额
-	Freight      float64               `gorm:"type:decimal(10,2);not null;default:0" json:"freight"` // 运费
-	ActualAmount float64               `gorm:"type:decimal(10,2);not null" json:"actualAmount"`      // 实付 = amount + freight
-	Items        []OrderItem           `gorm:"foreignKey:OrderID" json:"items,omitempty"`
-	Specs        []SpecSummaryResponse `gorm:"-" json:"specs,omitempty"`
-
-	CouponID       utils.Int64Str `gorm:"index" json:"couponId,omitempty"`
-	DiscountAmount float64        `gorm:"type:decimal(10,2);default:0" json:"discountAmount"`
-
+	Remark         string                `json:"remark"`                                               // 可选备注
+	Amount         float64               `gorm:"type:decimal(10,2);not null" json:"amount"`            // 商品总额
+	Freight        float64               `gorm:"type:decimal(10,2);not null;default:0" json:"freight"` // 运费
+	ActualAmount   float64               `gorm:"type:decimal(10,2);not null" json:"actualAmount"`      // 实付 = amount + freight
+	DiscountAmount float64               `gorm:"type:decimal(10,2);default:0" json:"discountAmount"`   // 优惠券金额
+	CouponID       utils.Int64Str        `gorm:"index" json:"couponId,omitempty"`
+	Items          []OrderItem           `gorm:"foreignKey:OrderID" json:"items,omitempty"`
+	Specs          []SpecSummaryResponse `gorm:"-" json:"specs,omitempty"`
 	// 新增物流关联（一个订单多个包裹）
 	Logistics []Logistics  `gorm:"foreignKey:OrderID" json:"logistics,omitempty"`
 	Address   OrderAddress `gorm:"foreignKey:OrderID;references:ID" json:"address"`

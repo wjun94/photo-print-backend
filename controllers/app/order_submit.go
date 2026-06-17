@@ -39,7 +39,6 @@ type SubmitOrderReq struct {
 // @Param request body SubmitOrderReq true "订单信息"
 // @Success 200 {object} utils.Response{data=object{orderId string}}
 // @Router /api/v1/wx/order/submit [post]
-// SubmitOrder 提交订单（支持优惠券）
 func SubmitOrder(c *gin.Context) {
 	userID, ok := utils.GetUserID(c)
 	if !ok {
@@ -53,7 +52,7 @@ func SubmitOrder(c *gin.Context) {
 		return
 	}
 
-	// ---------- 验证地址 ----------
+	// ---------- 1. 验证地址 ----------
 	addressID, _ := strconv.ParseInt(req.AddressId, 10, 64)
 	var address models.Address
 	if err := database.DB.First(&address, addressID).Error; err != nil {
@@ -65,7 +64,7 @@ func SubmitOrder(c *gin.Context) {
 		return
 	}
 
-	// ---------- 预检商品规格 ----------
+	// ---------- 2. 预检商品规格、计算总金额 ----------
 	type itemCheck struct {
 		spec     models.Spec
 		qty      int
@@ -107,33 +106,51 @@ func SubmitOrder(c *gin.Context) {
 		})
 	}
 
-	// ---------- 运费与初始金额 ----------
+	// ---------- 3. 计算运费 ----------
 	freight := utils.CalculateFreight(totalAmount)
-	actualAmount := totalAmount + freight
+	orderTotal := totalAmount + freight
+
+	// ---------- 4. 优惠券处理 ----------
 	discountAmount := 0.0
-	var usedUserCouponID int64 // 用户优惠券实例ID
+	var usedUserCouponID int64 // 用户券实例ID
 
-	// ---------- 优惠券处理（修正） ----------
 	if req.CouponID != "" {
-		// 打印前端传入的原始值，用于调试
-		fmt.Printf("前端传入的 couponId: %s\n", req.CouponID)
-
-		userCouponID, err := strconv.ParseInt(req.CouponID, 10, 64)
+		// 解析传入的ID
+		inputID, err := strconv.ParseInt(req.CouponID, 10, 64)
 		if err != nil {
 			utils.Fail(c, "优惠券ID格式错误")
 			return
 		}
 
-		// 直接查询用户优惠券实例，并预加载模板信息
 		var userCoupon models.UserCoupon
-		err = database.DB.Preload("Coupon").Where("coupon_id = ? AND user_id = ? AND status = ?",
-			userCouponID, userID, models.UserCouponUnused).First(&userCoupon).Error
-		if err != nil {
+		var errQuery error
+
+		// 优先尝试作为用户券实例ID查询
+		errQuery = database.DB.Preload("Coupon").
+			Where("id = ? AND user_id = ? AND status = ?", inputID, userID, models.UserCouponUnused).
+			First(&userCoupon).Error
+
+		// 若未找到，尝试作为模板ID查询（从当前用户持有的该模板券中选择最优的一张）
+		if errQuery != nil {
+			// 查询该模板下用户持有的所有未使用且未过期的券，按优惠金额最大或有效期最近排列
+			now := time.Now()
+			var candidates []models.UserCoupon
+			if err := database.DB.Preload("Coupon").
+				Where("coupon_id = ? AND user_id = ? AND status = ? AND valid_start <= ? AND valid_end >= ?",
+							inputID, userID, models.UserCouponUnused, now, now).
+				Order("valid_end ASC"). // 优先使用即将过期的券
+				First(&candidates).Error; err == nil && len(candidates) > 0 {
+				userCoupon = candidates[0]
+				errQuery = nil
+			}
+		}
+
+		if errQuery != nil {
 			utils.Fail(c, "优惠券不存在或不可用")
 			return
 		}
 
-		// 检查有效期
+		// 校验有效期（已在查询中判断，但双重保险）
 		now := time.Now()
 		if now.Before(userCoupon.ValidStart) || now.After(userCoupon.ValidEnd) {
 			utils.Fail(c, "优惠券已过期")
@@ -141,9 +158,8 @@ func SubmitOrder(c *gin.Context) {
 		}
 
 		coupon := userCoupon.Coupon
-		orderTotal := totalAmount + freight
 
-		// 检查商品适用范围
+		// 商品范围校验
 		scopeOK := false
 		if coupon.UseScope == models.UseScopeAll {
 			scopeOK = true
@@ -161,42 +177,44 @@ func SubmitOrder(c *gin.Context) {
 			return
 		}
 
-		// 门槛检查
+		// 门槛校验
 		if orderTotal < coupon.FullAmount {
 			utils.Fail(c, fmt.Sprintf("订单金额未满 %.2f 元，无法使用该优惠券", coupon.FullAmount))
 			return
 		}
 
-		// 计算抵扣金额
-		if coupon.Type == 1 { // 满减
+		// 计算优惠金额
+		switch coupon.Type {
+		case models.CouponTypeFullReduce: // 满减券
 			discountAmount = coupon.ReduceAmount
-			if discountAmount > orderTotal {
-				discountAmount = orderTotal
-			}
-		} else if coupon.Type == 2 { // 折扣
+		case models.CouponTypeNoThreshold: // 无门槛券
+			discountAmount = coupon.ReduceAmount
+		case models.CouponTypeDiscount: // 折扣券
 			discountAmount = orderTotal * (1 - coupon.DiscountRate)
 			if coupon.MaxReduce > 0 && discountAmount > coupon.MaxReduce {
 				discountAmount = coupon.MaxReduce
 			}
-			if discountAmount > orderTotal {
-				discountAmount = orderTotal
-			}
-		} else {
+		default:
 			utils.Fail(c, "不支持的优惠券类型")
 			return
 		}
 
-		actualAmount = orderTotal - discountAmount
-		if actualAmount < 0 {
-			actualAmount = 0
+		if discountAmount > orderTotal {
+			discountAmount = orderTotal
 		}
+
 		usedUserCouponID = userCoupon.ID.Int64()
 	}
 
-	// ---------- 生成订单号 ----------
+	// ---------- 5. 计算最终实付金额 ----------
+	actualAmount := orderTotal - discountAmount
+	if actualAmount < 0 {
+		actualAmount = 0
+	}
+
+	// ---------- 6. 创建订单数据 ----------
 	orderNo := fmt.Sprintf("PO%d", time.Now().UnixNano())
 
-	// ---------- 构建订单对象 ----------
 	order := models.Order{
 		OrderNo:        orderNo,
 		UserID:         utils.Int64Str(userID),
@@ -207,12 +225,11 @@ func SubmitOrder(c *gin.Context) {
 		Remark:         req.Remark,
 		Status:         models.OrderStatusPending,
 	}
-
 	if usedUserCouponID != 0 {
-		order.CouponID = utils.Int64Str(usedUserCouponID) // 存储用户优惠券实例ID
+		order.CouponID = utils.Int64Str(usedUserCouponID)
 	}
 
-	// 订单地址快照（略，同原代码）
+	// 地址快照
 	orderAddress := models.OrderAddress{
 		ReceiverName: address.ReceiverName,
 		Mobile:       address.Mobile,
@@ -226,7 +243,7 @@ func SubmitOrder(c *gin.Context) {
 		Doorplate:    address.Doorplate,
 	}
 
-	// ---------- 事务执行 ----------
+	// ---------- 7. 事务执行 ----------
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建订单
 		if err := tx.Create(&order).Error; err != nil {
@@ -236,7 +253,7 @@ func SubmitOrder(c *gin.Context) {
 		if err := tx.Create(&orderAddress).Error; err != nil {
 			return err
 		}
-		// 扣减库存，保存订单项
+		// 扣减库存、生成订单项
 		for _, ch := range checks {
 			newStock := ch.spec.Stock - ch.qty
 			if err := tx.Model(&ch.spec).Update("stock", newStock).Error; err != nil {
@@ -254,7 +271,7 @@ func SubmitOrder(c *gin.Context) {
 				return err
 			}
 		}
-		// 更新用户优惠券状态（使用用户优惠券实例ID）
+		// 更新用户优惠券状态
 		if usedUserCouponID != 0 {
 			result := tx.Model(&models.UserCoupon{}).
 				Where("id = ? AND user_id = ? AND status = ?", usedUserCouponID, userID, models.UserCouponUnused).
