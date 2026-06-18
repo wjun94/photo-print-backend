@@ -18,7 +18,7 @@ type Spec struct {
 	SkuCode    string         `gorm:"size:50" json:"skuCode"`                      // 商家自定义 SKU 编码
 	Image      string         `gorm:"size:255" json:"image"`                       // 规格图（可覆盖商品主图）
 	Attributes StringMap      `gorm:"type:json;serializer:json" json:"attributes"` // 动态属性，存储键值对如 {"颜色":"标准","尺寸":"5寸"}
-	Product    Product        `gorm:"foreignKey:ProductID" json:"-"`
+	// Product    Product        `gorm:"foreignKey:ProductID" json:"-"`
 }
 
 func (s *Spec) BeforeCreate(tx *gorm.DB) error {

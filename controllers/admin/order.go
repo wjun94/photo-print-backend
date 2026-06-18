@@ -96,7 +96,12 @@ func GetOrderDetail(c *gin.Context) {
 	// 过滤订单项：只保留商品 action 为 upload 的项
 	filteredItems := make([]models.OrderItem, 0)
 	for _, item := range order.Items {
-		if item.SpecInfo.Product.Action == models.ProductActionUpload {
+		var product models.Product
+		if err := database.DB.First(&product, item.SpecInfo.ProductID).Error; err != nil {
+			utils.Fail(c, "商品不存在")
+			return
+		}
+		if product.Action == models.ProductActionUpload {
 			filteredItems = append(filteredItems, item)
 		}
 	}

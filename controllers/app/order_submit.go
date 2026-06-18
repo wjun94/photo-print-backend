@@ -83,12 +83,17 @@ func SubmitOrder(c *gin.Context) {
 			utils.Fail(c, "规格不存在: "+req.SpecID)
 			return
 		}
-		if spec.Product.ID.Int64() != productID {
+		var product models.Product
+		if err := database.DB.First(&product, spec.ProductID).Error; err != nil {
+			utils.Fail(c, "商品不存在")
+			return
+		}
+		if product.ID.Int64() != productID {
 			utils.Fail(c, "商品与规格不匹配")
 			return
 		}
-		if spec.Product.Status != models.ProductStatusOnSale {
-			utils.Fail(c, "商品["+spec.Product.Name+"]已下架")
+		if product.Status != models.ProductStatusOnSale {
+			utils.Fail(c, "商品["+product.Name+"]已下架")
 			return
 		}
 		if spec.Stock < it.Quantity {

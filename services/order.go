@@ -47,7 +47,10 @@ func BuildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error
 		if spec.ID == 0 {
 			continue
 		}
-		product := spec.Product
+		var product models.Product
+		if err := database.DB.First(&product, spec.ProductID).Error; err != nil {
+			return nil, fmt.Errorf("商品不存在，ID: %d", spec.ProductID)
+		}
 		specID := spec.ID.Int64()
 		if _, ok := group[specID]; !ok {
 			group[specID] = &models.SpecSummaryResponse{

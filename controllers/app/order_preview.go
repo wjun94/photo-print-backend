@@ -118,11 +118,15 @@ func PreviewOrder(c *gin.Context) {
 
 		// 查询规格并预加载商品信息
 		var spec models.Spec
-		if err := database.DB.Preload("Product").First(&spec, specID).Error; err != nil {
+		if err := database.DB.First(&spec, specID).Error; err != nil {
 			utils.Fail(c, "规格不存在: "+req.SpecID)
 			return
 		}
-		product := spec.Product
+		var product models.Product
+		if err := database.DB.First(&product, spec.ProductID).Error; err != nil {
+			utils.Fail(c, "商品不存在")
+			return
+		}
 		if product.ID.Int64() != productID {
 			utils.Fail(c, "商品与规格不匹配")
 			return
