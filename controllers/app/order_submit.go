@@ -79,7 +79,7 @@ func SubmitOrder(c *gin.Context) {
 
 	for _, it := range req.Items {
 		var spec models.Spec
-		if err := database.DB.Preload("Product").First(&spec, specID).Error; err != nil {
+		if err := database.DB.First(&spec, specID).Error; err != nil {
 			utils.Fail(c, "规格不存在: "+req.SpecID)
 			return
 		}

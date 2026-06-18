@@ -40,7 +40,7 @@ type Product struct {
 	// 关联的规格属性模板（如颜色、尺寸的可选值）
 	SpecAttributes []SpecAttribute `gorm:"foreignKey:ProductID" json:"specAttributes,omitempty"`
 	// 具体的 SKU 规格列表（每个规格包含价格、库存及属性组合）
-	Specs              []Spec  `foreignKey:ProductID;references:ID" json:"specs,omitempty"`
+	Specs              []Spec  `gorm:"foreignKey:ProductID;references:ID" json:"specs,omitempty"`
 	FreeShippingAmount float64 `gorm:"-" json:"freeShippingAmount,omitempty"` // 包邮门槛（临时字段，不存数据库）
 }
 

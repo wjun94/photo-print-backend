@@ -34,7 +34,7 @@ func BuildOrderSpecSummaries(orderID int64) ([]models.SpecSummaryResponse, error
 	var items []models.OrderItem
 	err := database.DB.
 		Where("order_id = ?", orderID).
-		Preload("SpecInfo.Product").
+		Preload("SpecInfo").
 		Find(&items).Error
 	if err != nil {
 		return nil, err
