@@ -103,6 +103,31 @@ func GetProductListForWx(c *gin.Context) {
 	})
 }
 
+// ProductDetailResponse 商品详情响应（平铺结构）
+type ProductDetailResponse struct {
+	ID           utils.Int64Str       `gorm:"primarykey;autoIncrement:false" json:"id"` // 商品 ID，雪花算法生成
+	Name         string               `gorm:"size:200;not null" json:"name"`            // 商品名称
+	CoverImage   string               `gorm:"size:500" json:"coverImage"`               // 封面图片 URL
+	BannerImages models.StringArray   `gorm:"type:json" json:"bannerImages"`            // 轮播图 URL 数组，JSON 存储
+	Description  string               `gorm:"type:text" json:"description"`             // 简短描述，用于列表页
+	Detail       string               `gorm:"type:longtext" json:"detail"`              // 富文本详情（HTML/Markdown）
+	Status       models.ProductStatus `gorm:"default:'draft';size:20" json:"status"`    // 商品状态：draft, on_sale, off_sale
+	SortOrder    int                  `gorm:"default:0" json:"sortOrder"`               // 排序序号，数字越小越靠前
+	CreatedAt    utils.LocalTime      `json:"createdAt"`                                // 创建时间
+	UpdatedAt    utils.LocalTime      `json:"updatedAt"`                                // 更新时间
+	Action       models.ProductAction `gorm:"size:20;default:'confirm'" json:"action"`  // confirm-确认订单, upload-上传照片
+	Tags         models.StringArray   `gorm:"type:json;serializer:json" json:"tags"`    // 商品标签，JSON 数组存储，如 ["热销","新品"]
+
+	// 关联的规格属性模板（如颜色、尺寸的可选值）
+	SpecAttributes []models.SpecAttribute `gorm:"foreignKey:ProductID" json:"specAttributes,omitempty"`
+	// 具体的 SKU 规格列表（每个规格包含价格、库存及属性组合）
+	Specs              []models.Spec `gorm:"foreignKey:ProductID;references:ID" json:"specs,omitempty"`
+	FreeShippingAmount float64       `gorm:"-" json:"freeShippingAmount,omitempty"` // 包邮门槛（临时字段，不存数据库）
+
+	MinPrice float64 `json:"minPrice"` // 最低价格
+	MaxPrice float64 `json:"maxPrice"` // 最高价格
+}
+
 // GetProductDetailForWx 小程序商品详情
 // @Summary      小程序商品详情
 // @Description  根据商品ID获取详情，包含所有规格、轮播图、描述、跳转动作（confirm/upload）等
@@ -130,7 +155,45 @@ func GetProductDetailForWx(c *gin.Context) {
 		utils.Fail(c, "商品不存在或已下架")
 		return
 	}
+
+	// 计算价格区间
+	minPrice := 0.0
+	maxPrice := 0.0
+	if len(product.Specs) > 0 {
+		minPrice = product.Specs[0].Price
+		maxPrice = product.Specs[0].Price
+		for _, spec := range product.Specs[1:] {
+			if spec.Price < minPrice {
+				minPrice = spec.Price
+			}
+			if spec.Price > maxPrice {
+				maxPrice = spec.Price
+			}
+		}
+	}
 	product.FreeShippingAmount = config.AppConfig.FreeShippingAmount
+
+	// 构建响应（直接平铺，不包裹 product）
+	resp := ProductDetailResponse{
+		ID:                 product.ID,
+		Name:               product.Name,
+		CoverImage:         product.CoverImage,
+		BannerImages:       product.BannerImages,
+		Description:        product.Description,
+		Detail:             product.Detail,
+		Status:             product.Status,
+		SortOrder:          product.SortOrder,
+		CreatedAt:          product.CreatedAt,
+		UpdatedAt:          product.UpdatedAt,
+		Action:             product.Action,
+		Tags:               product.Tags,
+		SpecAttributes:     product.SpecAttributes,
+		Specs:              product.Specs,
+		FreeShippingAmount: config.AppConfig.FreeShippingAmount,
+		MinPrice:           minPrice,
+		MaxPrice:           maxPrice,
+	}
+
 	// 直接返回完整商品对象，其中包含 Action 字段
-	utils.Success(c, product)
+	utils.Success(c, resp)
 }
