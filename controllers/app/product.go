@@ -135,7 +135,7 @@ type ProductDetailResponse struct {
 // @Accept       json
 // @Produce      json
 // @Param        id   path      string  true  "商品ID"
-// @Success      200  {object}  utils.Response{data=models.Product}
+// @Success      200  {object}  utils.Response{data=ProductDetailResponse}
 // @Failure      400  {object}  utils.Response
 // @Failure      404  {object}  utils.Response
 // @Router       /api/v1/wx/products/{id} [get]
