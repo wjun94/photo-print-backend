@@ -161,12 +161,12 @@ func GetProductDetailForWx(c *gin.Context) {
 	maxPrice := 0.0
 	if len(product.Specs) > 0 {
 		minPrice = product.Specs[0].Price
-		maxPrice = product.Specs[0].Price
+		// maxPrice = product.Specs[0].Price
 		for _, spec := range product.Specs[1:] {
 			if spec.Price < minPrice {
 				minPrice = spec.Price
 			}
-			if spec.Price > maxPrice {
+			if spec.Price > maxPrice && spec.Price > minPrice {
 				maxPrice = spec.Price
 			}
 		}
