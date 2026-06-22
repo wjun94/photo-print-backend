@@ -52,7 +52,8 @@ photo-print-backend/
 ├── docker-compose.yml      # 生产环境编排
 ├── docker-compose.dev.yml  # 开发环境编排（热重载）
 ├── .air.toml               # Air 配置文件（可选）
-├── .env.example            # 环境变量模板
+├── .env.dev                # 测试环境变量模板
+├── .env.prod               # 生产变量模板
 ├── config/                 # 配置加载
 ├── jobs/                   # 定时任务
 ├── services/               # 目录（或包）通常用于存放业务逻辑层的代码，其作用是在控制器（controllers）和数据访问层（database / models）之间提供一个清晰的隔离层。
@@ -83,12 +84,45 @@ cd photo-print-backend
 
 ### 2️⃣ 配置微信小程序（可选，如需小程序登录）
 
-在 `docker-compose.yml` 或环境变量中设置：
+在 `.env` 或环境变量中设置：
 
-```yaml
-environment:
-  WECHAT_APP_ID: wx1234567890abcdef
-  WECHAT_APP_SECRET: your_wechat_app_secret
+```env
+# 环境变量
+ENV=development
+DB_HOST=db
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=123456
+DB_NAME=photoprint
+SERVER_PORT=8080
+# 可选：设置代理加速
+GOPROXY=https://goproxy.cn,direct
+FIXED_FREIGHT=10
+FREE_SHIPPING_AMOUNT=10
+QINIU_ACCESS_KEY=gtWDWfb8YvTS0v03ukKUYnetbcUgorUNgrgbqkYV
+QINIU_SECRET_KEY=dmaJHu9TqaYvYtd3-Qdijt7y7Qqa_z3T8LqkQqz-
+QINIU_BUCKET=photo-print
+# 图片访问域名
+QINIU_DOMAIN=http://tf2fmmjt0.hd-bkt.clouddn.com
+QINIU_ZONE=z0
+# 小程序上传图片地址
+UPLOAD_PREFIX=dev/upload/
+# 后台上传图片地址
+UPLOAD_PREFIX_ADMIN=dev/upload-admin/
+# 二维码地址
+UPLOAD_PREFIX_QRCODE=dev/qrcode/
+# 小程序配置
+APPID=wxa58b898eef562425
+APPSECRET=920a98270de9db248490ce0da5cde66b
+
+# 微信支付
+WECHATPAYMCHID=1113850879 # 商户号
+WECHATAPIV3=xiangwenjun33032719941121063X999  # APIv3密钥
+WECHATPAYPRIVATECERT=482A301A63B357EF95006F7E7F2E5E6B33D61232  # 商户证书序列号
+WECHATPAYPRIVATEKEYPATH=./certs/apiclient_key.pem  # 商户私钥路径
+PUBLICKEYPATH=./certs/pub_key.pem # 商户使用微信支付公钥验签
+PUBLICKEYSERIALNO=PUB_KEY_ID_0111138508792026061200211615002004
+WECHATPAYNOTIFYURL=https://honest-planes-serve.loca.lt/api/v1/pay/notify # 支付请求参数，要调用pay/notify接口，支付结果回调地址
 ```
 
 ### 3️⃣ 启动服务
