@@ -103,7 +103,7 @@ QINIU_ACCESS_KEY=gtWDWfb8YvTS0v03ukKUYnetbcUgorUNgrgbqkYV
 QINIU_SECRET_KEY=dmaJHu9TqaYvYtd3-Qdijt7y7Qqa_z3T8LqkQqz-
 QINIU_BUCKET=photo-print
 # 图片访问域名
-QINIU_DOMAIN=http://tf2fmmjt0.hd-bkt.clouddn.com
+QINIU_DOMAIN=http://cnicu.top
 QINIU_ZONE=z0
 # 小程序上传图片地址
 UPLOAD_PREFIX=dev/upload/
