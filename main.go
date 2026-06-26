@@ -173,6 +173,7 @@ func main() {
 	// Swagger 文档
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	log.Printf("Server running on :%s", config.AppConfig.ServerPort)
+	// log.Printf("Server running on :%s", config.AppConfig.ServerPort)
+	log.Printf("Server running on :8081")
 	r.Run(":" + config.AppConfig.ServerPort)
 }
