@@ -16,6 +16,7 @@ type ProductListItem struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	CoverImage  string `json:"coverImage"`
+	Action      string `json:"action"`
 	Price       string `json:"price"`       // 格式化后的最低价文本，如 "19.99"
 	PriceSuffix string `json:"priceSuffix"` // 价格后缀，如 "起" 或空
 }
@@ -26,13 +27,16 @@ type ProductListItem struct {
 // @Tags         小程序-商品
 // @Accept       json
 // @Produce      json
-// @Param        page  query   int     false  "页码，默认1"
-// @Param        size  query   int     false  "每页数量，默认10，最大20"
-// @Success      200   {object} utils.Response{data=object{list=[]ProductListItem,total=int64,page=int,size=int}}
+// @Param        page   query   int     false  "页码，默认1"
+// @Param        size   query   int     false  "每页数量，默认10，最大20"
+// @Param        action query   string  false  "商品类型：confirm-确认订单，upload-上传照片"
+// @Success      200    {object} utils.Response{data=object{list=[]ProductListItem,total=int64,page=int,size=int}}
 // @Router       /api/v1/wx/products [get]
 func GetProductListForWx(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+	action := c.Query("action") // 新增：筛选商品类型
+
 	if page < 1 {
 		page = 1
 	}
@@ -44,10 +48,21 @@ func GetProductListForWx(c *gin.Context) {
 	var products []models.Product
 	var total int64
 
-	// 仅查询上架商品，并预加载规格
+	// 构建查询：仅上架商品 + 预加载规格
 	query := database.DB.Model(&models.Product{}).
 		Where("status = ?", models.ProductStatusOnSale).
 		Preload("Specs")
+
+	// 按 action 筛选（如果传入）
+	if action != "" {
+		// 校验 action 是否合法
+		if action != string(models.ProductActionConfirm) && action != string(models.ProductActionUpload) {
+			utils.Fail(c, "无效的 action 参数，请使用 confirm 或 upload")
+			return
+		}
+		query = query.Where("action = ?", action)
+	}
+
 	query.Count(&total)
 	query.Offset(offset).Limit(size).Order("sort_order asc, created_at desc").Find(&products)
 
@@ -59,6 +74,7 @@ func GetProductListForWx(c *gin.Context) {
 				ID:          p.ID.String(),
 				Name:        p.Name,
 				CoverImage:  p.CoverImage,
+				Action:      string(p.Action),
 				Price:       "0.00",
 				PriceSuffix: "",
 			})
@@ -90,6 +106,7 @@ func GetProductListForWx(c *gin.Context) {
 			ID:          p.ID.String(),
 			Name:        p.Name,
 			CoverImage:  p.CoverImage,
+			Action:      string(p.Action),
 			Price:       price,
 			PriceSuffix: priceSuffix,
 		})
